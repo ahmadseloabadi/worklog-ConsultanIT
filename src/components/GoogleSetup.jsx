@@ -39,7 +39,9 @@ export default function GoogleSetup() {
     setMessage(null);
     try {
       const spreadsheetId = extractGoogleResourceId(spreadsheetLink, "spreadsheet");
-      const folderId = extractGoogleResourceId(folderLink, "folder");
+      const folderId = folderLink.trim()
+        ? extractGoogleResourceId(folderLink, "folder")
+        : "";
       const response = await apiFetch("/api/setup/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,11 +56,16 @@ export default function GoogleSetup() {
         spreadsheetLink,
         folderLink,
         spreadsheetName: result.spreadsheet.name,
-        folderName: result.folder.name,
+        folderName: result.folder?.name || "",
       };
       saveGoogleSettings(session.user.email, settings);
       setSavedSettings(settings);
-      setMessage({ type: "success", text: "Setup selesai. Akun ini dapat memakai spreadsheet dan folder gambar." });
+      setMessage({
+        type: "success",
+        text: folderId
+          ? "Setup selesai. Akun ini dapat memakai spreadsheet dan folder gambar."
+          : "Setup spreadsheet selesai. Folder Drive dapat ditambahkan nanti untuk mengunggah bukti gambar.",
+      });
     } catch (error) {
       setMessage({ type: "error", text: error.message || "Setup gagal disimpan." });
     } finally {
@@ -134,7 +141,7 @@ export default function GoogleSetup() {
               {savedSettings && <span className="setup-status">Setup tersimpan di browser ini</span>}
             </div>
             <p className="setup-description">
-              Masukkan link spreadsheet dan folder Drive. Akun Google perlu izin Editor dan akses unggah.
+              Link spreadsheet wajib diisi. Folder Drive bersifat opsional dan hanya diperlukan jika ingin mengunggah bukti gambar.
             </p>
             <div className="token-check">
               <div>
@@ -170,12 +177,16 @@ export default function GoogleSetup() {
                 value={folderLink}
                 onChange={(event) => setFolderLink(event.target.value)}
                 placeholder="https://drive.google.com/drive/folders/..."
-                required
               />
             </label>
             <div className="setup-card-footer">
               {savedSettings && (
-                <><span>File Spreadsheet: {savedSettings.spreadsheetName} | Folder GDrive: {savedSettings.folderName}</span></>
+                <span>
+                  File Spreadsheet: {savedSettings.spreadsheetName}
+                  {savedSettings.folderName
+                    ? ` | Folder GDrive: ${savedSettings.folderName}`
+                    : " | Folder GDrive belum diatur"}
+                </span>
               )}
               <button className="submit-button" type="submit" disabled={saving} aria-busy={saving}>
                 {saving ? "Memeriksa akses..." : savedSettings ? "Perbarui setup" : "Simpan setup"}

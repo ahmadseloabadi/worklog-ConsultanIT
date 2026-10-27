@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import DraftQueue from "@/components/DraftQueue";
 import ImageLightbox from "@/components/ImageLightbox";
 import { ActionToast, ConfirmationDialog, useConfirmation } from "@/components/ActionFeedback";
+import WorkStatusToggle from "@/components/WorkStatusToggle";
 import { readGoogleSettings } from "@/lib/googleSettings";
 import {
   deleteDraft as deleteStoredDraft,
@@ -546,10 +547,20 @@ export default function LogForm() {
     const selectedDrafts = drafts.filter((draft) => requestedDraftIds.includes(draft.id));
     if (!selectedDrafts.length) return;
     const googleSettings = readGoogleSettings(session?.user?.email);
-    if (!googleSettings?.spreadsheetId || !googleSettings?.folderId) {
+    if (!googleSettings?.spreadsheetId) {
       setBatchMessage({
         type: "error",
-        text: "Atur link spreadsheet dan folder Drive terlebih dahulu di menu Setup Google.",
+        text: "Atur link spreadsheet terlebih dahulu di menu Setup Google.",
+      });
+      return;
+    }
+    const hasImages = selectedDrafts.some((draft) =>
+      (draft.images || (draft.imageDataUrl ? [draft.imageDataUrl] : [])).length > 0
+    );
+    if (hasImages && !googleSettings.folderId) {
+      setBatchMessage({
+        type: "error",
+        text: "Atur link folder Drive di menu Setup Google untuk mengirim laporan yang memiliki bukti gambar.",
       });
       return;
     }
@@ -856,24 +867,18 @@ export default function LogForm() {
             </div>
           </div>
 
-          <Field label="Status pekerjaan">
-            <select
-              className="field-control"
-              value={form.tglSelesai ? "completed" : "pending"}
-              onChange={(event) => {
-                const today = todayAsInputValue();
-                update(
-                  "tglSelesai",
-                  event.target.value === "pending"
-                    ? ""
-                    : form.tglSelesai || (form.tglMulai > today ? form.tglMulai : today)
-                );
-              }}
-            >
-              <option value="completed">Selesai</option>
-              <option value="pending">Tertunda</option>
-            </select>
-          </Field>
+          <WorkStatusToggle
+            value={form.tglSelesai ? "completed" : "pending"}
+            onChange={(status) => {
+              const today = todayAsInputValue();
+              update(
+                "tglSelesai",
+                status === "pending"
+                  ? ""
+                  : form.tglSelesai || (form.tglMulai > today ? form.tglMulai : today)
+              );
+            }}
+          />
           <div className="field-grid">
             <Field label="Tanggal mulai" required>
               <input

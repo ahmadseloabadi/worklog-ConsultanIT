@@ -155,10 +155,10 @@ async function postUpload(body) {
 async function postValidate(body) {
   const { spreadsheetId, folderId } = body;
   if (!isGoogleId(spreadsheetId)) throw fail("Link spreadsheet tidak valid.");
-  if (!isGoogleId(folderId)) throw fail("Link folder Google Drive tidak valid.");
+  if (folderId && !isGoogleId(folderId)) throw fail("Link folder Google Drive tidak valid.");
   const [spreadsheet, folder] = await Promise.all([
     validateSpreadsheetAccess(spreadsheetId),
-    validateDriveFolder(folderId),
+    folderId ? validateDriveFolder(folderId) : Promise.resolve(null),
   ]);
   return { ok: true, spreadsheet, folder };
 }
