@@ -109,7 +109,7 @@ export default function LogForm() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [sendingDrafts, setSendingDrafts] = useState(false);
   const [sendProgress, setSendProgress] = useState("");
-  const [scheduleEnabled, setScheduleEnabled] = useState(true);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [hourlySchedule, setHourlySchedule] = useState(false);
   const [scheduleTimes, setScheduleTimes] = useState(["12:00", "18:00", "00:00"]);
   const [scheduleLoaded, setScheduleLoaded] = useState(false);
@@ -182,7 +182,7 @@ export default function LogForm() {
     try {
       const saved = JSON.parse(localStorage.getItem(`daily-worklog-auto-send:${email.toLowerCase()}`) || "null");
       if (saved) {
-        setScheduleEnabled(saved.version >= 2 ? Boolean(saved.enabled) : true);
+        setScheduleEnabled(saved.version >= 3 ? Boolean(saved.enabled) : false);
         setHourlySchedule(Boolean(saved.hourly));
         setScheduleTimes(Array.isArray(saved.times) ? saved.times.filter((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)) : ["12:00", "18:00", "00:00"]);
       }
@@ -196,7 +196,7 @@ export default function LogForm() {
     const email = session?.user?.email;
     if (!scheduleLoaded || !email) return;
     localStorage.setItem(`daily-worklog-auto-send:${email.toLowerCase()}`, JSON.stringify({
-      version: 2,
+      version: 3,
       enabled: scheduleEnabled,
       hourly: hourlySchedule,
       times: scheduleTimes,

@@ -94,6 +94,9 @@ export default function DraftQueue({
             <span>Aktifkan jadwal</span>
           </label>
         </div>
+        <p className="scheduler-note" role="status">
+          Jadwal {scheduleEnabled ? "aktif" : "nonaktif"} untuk akun ini.
+        </p>
         <div className="scheduler-times">
           {scheduleTimes.map((time, index) => (
             <label className="scheduler-time" key={`schedule-${index}`}>
@@ -133,7 +136,9 @@ export default function DraftQueue({
           />
           <span>Kirim juga setiap jam</span>
         </label>
-        <p className="scheduler-note">Jadwal tersimpan di browser untuk akun ini. Tab aplikasi harus tetap terbuka agar pengiriman berjalan.</p>
+        <p className="scheduler-note">
+          Jadwal tersimpan di browser untuk akun ini. Jadwal hanya berjalan jika diaktifkan dan tab aplikasi tetap terbuka.
+        </p>
       </section>
 
       {sendingDrafts && (
