@@ -5,7 +5,19 @@ import { readGoogleSettings } from "@/lib/googleSettings";
 import { completeWorklog } from "@/lib/worklogs";
 import { ActionToast, ConfirmationDialog, useConfirmation } from "@/components/ActionFeedback";
 import AppHeader from "@/components/AppHeader";
+import Icon from "@/components/Icon";
 import PendingReportsPanel from "@/components/PendingReportsPanel";
+import ReportDetailDialog from "@/components/ReportDetailDialog";
+
+const emptyReportForm = {
+  namaAplikasiDaerah: "",
+  menu: "",
+  tglMulai: "",
+  permasalahan: "",
+  solusi: "",
+  tglSelesai: "",
+  keterangan: "",
+};
 
 function todayAsInputValue() {
   const today = new Date();
@@ -30,6 +42,10 @@ export default function PendingPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState(null);
   const [completingId, setCompletingId] = useState(null);
+  const [viewingWorklog, setViewingWorklog] = useState(null);
+  const [editingWorklog, setEditingWorklog] = useState(null);
+  const [editForm, setEditForm] = useState(emptyReportForm);
+  const [savingEdit, setSavingEdit] = useState(false);
   const { confirm, confirmation, acceptConfirmation, cancelConfirmation } = useConfirmation();
 
   async function loadWorklogs() {
@@ -53,6 +69,71 @@ export default function PendingPage() {
   useEffect(() => {
     if (session?.user?.email) void loadWorklogs();
   }, [session?.user?.email]);
+
+  function handleEdit(worklog) {
+    setEditingWorklog(worklog);
+    setEditForm({
+      namaAplikasiDaerah: worklog.aplikasi || "",
+      menu: worklog.menu || "",
+      tglMulai: worklog.tglMulai || "",
+      permasalahan: worklog.permasalahan || "",
+      solusi: worklog.solusi || "",
+      tglSelesai: worklog.tglSelesai || "",
+      keterangan: worklog.keterangan || "",
+    });
+    setMessage(null);
+  }
+
+  function closeEditor() {
+    if (savingEdit) return;
+    setEditingWorklog(null);
+    setEditForm(emptyReportForm);
+  }
+
+  async function handleSaveEdit(event) {
+    event.preventDefault();
+    if (!editingWorklog || editForm.tglSelesai < editForm.tglMulai) return;
+    setSavingEdit(true);
+    setMessage(null);
+    try {
+      const settings = readGoogleSettings(session?.user?.email);
+      const response = await apiFetch(`/api/log/${encodeURIComponent(editingWorklog.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editForm,
+          expected: editingWorklog,
+          spreadsheetId: settings?.spreadsheetId,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Laporan gagal diperbarui.");
+      const updatedWorklog = {
+        ...editingWorklog,
+        aplikasi: editForm.namaAplikasiDaerah,
+        menu: editForm.menu,
+        tglMulai: editForm.tglMulai,
+        permasalahan: editForm.permasalahan,
+        solusi: editForm.solusi,
+        tglSelesai: editForm.tglSelesai,
+        keterangan: editForm.keterangan,
+      };
+      setWorklogs((current) => current.map((item) =>
+        item.id === editingWorklog.id ? updatedWorklog : item
+      ));
+      window.dispatchEvent(new Event("daily-worklog:counts-updated"));
+      setEditingWorklog(null);
+      setEditForm(emptyReportForm);
+      setMessage({
+        type: "success",
+        text: `Laporan berhasil diperbarui di spreadsheet.${data.borderWarning ? ` ${data.borderWarning}` : ""}`,
+      });
+    } catch (saveError) {
+      setMessage({ type: "error", text: saveError.message || "Laporan gagal diperbarui." });
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   async function handleComplete(worklog) {
     const completedAt = todayAsInputValue();
@@ -105,6 +186,8 @@ export default function PendingPage() {
             loading={loading}
             error={error}
             completingId={completingId}
+            onEdit={handleEdit}
+            onView={setViewingWorklog}
             onComplete={handleComplete}
           />
         </div>
@@ -120,6 +203,81 @@ export default function PendingPage() {
             <button className="session-button sign-in-button" onClick={() => signIn("google")}>
               Masuk dengan Google
             </button>
+          </section>
+        </div>
+      )}
+      <ReportDetailDialog report={viewingWorklog} onClose={() => setViewingWorklog(null)} />
+      {editingWorklog && (
+        <div className="report-editor-backdrop" onClick={closeEditor}>
+          <section
+            className="report-editor-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pending-report-editor-heading"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="report-editor-heading">
+              <div>
+                <span className="panel-eyebrow">Laporan tertunda</span>
+                <h2 id="pending-report-editor-heading">Edit laporan</h2>
+              </div>
+              <button
+                type="button"
+                className="image-lightbox-close report-editor-close"
+                onClick={closeEditor}
+                aria-label="Tutup form edit"
+                disabled={savingEdit}
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+            {message?.type === "error" && (
+              <p className="form-message error" role="alert">
+                <span className="message-mark" aria-hidden="true">!</span>
+                {message.text}
+              </p>
+            )}
+            <form className="report-editor-form" onSubmit={handleSaveEdit}>
+              <label className="field">
+                <span className="field-label">Nama Aplikasi & Daerah <span className="required-mark">*</span></span>
+                <input className="field-control" value={editForm.namaAplikasiDaerah} onChange={(event) => setEditForm({ ...editForm, namaAplikasiDaerah: event.target.value })} required />
+              </label>
+              <label className="field">
+                <span className="field-label">Menu <span className="required-mark">*</span></span>
+                <input className="field-control" value={editForm.menu} onChange={(event) => setEditForm({ ...editForm, menu: event.target.value })} required />
+              </label>
+              <div className="field-grid">
+                <label className="field">
+                  <span className="field-label">Tanggal mulai <span className="required-mark">*</span></span>
+                  <input className="field-control" type="date" value={editForm.tglMulai} onChange={(event) => setEditForm({ ...editForm, tglMulai: event.target.value })} required />
+                </label>
+                <label className="field">
+                  <span className="field-label">Tanggal selesai</span>
+                  <input className="field-control" type="date" value={editForm.tglSelesai} min={editForm.tglMulai || undefined} onChange={(event) => setEditForm({ ...editForm, tglSelesai: event.target.value })} />
+                </label>
+              </div>
+              {editForm.tglMulai && editForm.tglSelesai && editForm.tglSelesai < editForm.tglMulai && (
+                <p className="field-error" role="alert">Tanggal selesai tidak boleh lebih awal dari tanggal mulai.</p>
+              )}
+              <label className="field">
+                <span className="field-label">Permasalahan <span className="required-mark">*</span></span>
+                <textarea className="field-control" rows={3} value={editForm.permasalahan} onChange={(event) => setEditForm({ ...editForm, permasalahan: event.target.value })} required />
+              </label>
+              <label className="field">
+                <span className="field-label">Solusi / tindak lanjut <span className="required-mark">*</span></span>
+                <textarea className="field-control" rows={3} value={editForm.solusi} onChange={(event) => setEditForm({ ...editForm, solusi: event.target.value })} required />
+              </label>
+              <label className="field">
+                <span className="field-label">Keterangan</span>
+                <textarea className="field-control" rows={2} value={editForm.keterangan} onChange={(event) => setEditForm({ ...editForm, keterangan: event.target.value })} />
+              </label>
+              <div className="report-editor-actions">
+                <button type="button" className="page-button" onClick={closeEditor} disabled={savingEdit}>Batal</button>
+                <button type="submit" className="submit-button" disabled={savingEdit || editForm.tglSelesai < editForm.tglMulai} aria-busy={savingEdit}>
+                  {savingEdit ? "Menyimpan..." : "Simpan perubahan"}
+                </button>
+              </div>
+            </form>
           </section>
         </div>
       )}

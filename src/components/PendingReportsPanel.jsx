@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import Icon from "@/components/Icon";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -18,6 +17,8 @@ export default function PendingReportsPanel({
   loading,
   error,
   completingId,
+  onEdit,
+  onView,
   onComplete,
 }) {
   const pendingWorklogs = worklogs.filter((worklog) => !worklog.tglSelesai);
@@ -45,14 +46,24 @@ export default function PendingReportsPanel({
               </div>
               <span className="report-status is-open">Tertunda</span>
               <div className="pending-report-actions">
-                <Link
+                <button
+                  type="button"
                   className="page-button pending-edit-button"
-                  to={`/reports?status=pending&edit=${encodeURIComponent(worklog.id)}`}
+                  onClick={() => onEdit(worklog)}
                   aria-label={`Edit laporan ${worklog.aplikasi || "tanpa nama"}`}
                 >
                   <Icon name="edit" size={15} />
                   <span>Edit</span>
-                </Link>
+                </button>
+                <button
+                  type="button"
+                  className="page-button pending-view-button"
+                  onClick={() => onView(worklog)}
+                  aria-label={`Lihat detail laporan ${worklog.aplikasi || "tanpa nama"}`}
+                >
+                  <Icon name="eye" size={15} />
+                  <span>Lihat</span>
+                </button>
                 <button
                   type="button"
                   className="submit-button pending-complete-button"

@@ -828,7 +828,7 @@ export default function LogForm() {
               value={form.namaAplikasiDaerah}
               suggestions={spreadsheetSuggestions.namaAplikasiDaerah}
               onChange={(value) => update("namaAplikasiDaerah", value)}
-              placeholder="Contoh: Simapatda Karimun"
+              placeholder="Contoh: Siskeudes TNT Persepsi"
             />
             <SpreadsheetField
               id="menu-field"

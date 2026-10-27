@@ -72,7 +72,8 @@ export default function Dashboard() {
   const [tableMenu, setTableMenu] = useState("all");
   const [tableStatus, setTableStatus] = useState("all");
   const [tablePage, setTablePage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
+  const [tableSort, setTableSort] = useState({ field: "tglMulai", direction: -1 });
   const hasDashboardFilters = monthFilter !== "all" || Boolean(startDate || endDate) ||
     application !== "all" || menu !== "all" || statusFilter !== "all";
   const hasTableFilters = Boolean(tableSearch || tableStartDate || tableEndDate) ||
@@ -253,8 +254,19 @@ export default function Dashboard() {
         ].join(" ")).includes(query)) return false;
         return true;
       })
-      .sort((a, b) => b.tglMulai.localeCompare(a.tglMulai));
-  }, [monthFilter, tableApplication, tableEndDate, tableMenu, tableSearch, tableStartDate, tableStatus, worklogs]);
+      .sort((left, right) => {
+        const leftValue = tableSort.field === "status"
+          ? (left.tglSelesai ? "Selesai" : "Tertunda")
+          : left[tableSort.field] || "";
+        const rightValue = tableSort.field === "status"
+          ? (right.tglSelesai ? "Selesai" : "Tertunda")
+          : right[tableSort.field] || "";
+        if (!leftValue && !rightValue) return 0;
+        if (!leftValue) return 1;
+        if (!rightValue) return -1;
+        return leftValue.localeCompare(rightValue, "id") * tableSort.direction;
+      });
+  }, [monthFilter, tableApplication, tableEndDate, tableMenu, tableSearch, tableSort, tableStartDate, tableStatus, worklogs]);
   const pageCount = Math.ceil(tableRows.length / pageSize);
   const currentPage = Math.min(tablePage, Math.max(1, pageCount));
   const firstVisibleRow = tableRows.length ? (currentPage - 1) * pageSize + 1 : 0;
@@ -284,6 +296,14 @@ export default function Dashboard() {
   useEffect(() => {
     setTablePage(1);
   }, [monthFilter, pageSize, tableApplication, tableEndDate, tableMenu, tableSearch, tableStartDate, tableStatus]);
+
+  function toggleTableSort(field) {
+    setTableSort((current) => ({
+      field,
+      direction: current.field === field ? -current.direction : 1,
+    }));
+    setTablePage(1);
+  }
 
   function resetFilters() {
     setMonthFilter("all");
@@ -393,7 +413,6 @@ export default function Dashboard() {
               <option value="all">Semua laporan</option>
               <option value="completed">Selesai</option>
               <option value="ongoing">Tertunda</option>
-              <option value="issues">Ada kendala</option>
             </select>
           </label>
         </div>
@@ -430,23 +449,18 @@ export default function Dashboard() {
               <span className="kpi-caption">{metrics.completionRate}% dari laporan</span>
               <span className="kpi-mark" aria-hidden="true">02</span>
             </article>
-            <article className="kpi-card kpi-issues">
-              <span className="kpi-label">Laporan berkendala</span>
-              <strong>{metrics.withIssues}</strong>
-              <span className="kpi-caption">ada kendala</span>
-              <span className="kpi-mark" aria-hidden="true">03</span>
-            </article>
+    
             <article className="kpi-card kpi-open">
               <span className="kpi-label">Tertunda</span>
               <strong>{metrics.total - metrics.completed}</strong>
               <span className="kpi-caption">belum selesai</span>
-              <span className="kpi-mark" aria-hidden="true">04</span>
+              <span className="kpi-mark" aria-hidden="true">03</span>
             </article>
             <article className="kpi-card kpi-duration">
               <span className="kpi-label">Rata-rata penyelesaian</span>
               <strong>{metrics.averageResolutionDays ?? "—"}{metrics.averageResolutionDays !== null && <small> hari</small>}</strong>
               <span className="kpi-caption">laporan selesai</span>
-              <span className="kpi-mark" aria-hidden="true">05</span>
+              <span className="kpi-mark" aria-hidden="true">04</span>
             </article>
           </section>
           <section className="dashboard-panel activity-panel" aria-label="Tren aktivitas bulanan">
@@ -623,7 +637,6 @@ export default function Dashboard() {
                   <option value="all">Semua status</option>
                   <option value="completed">Selesai</option>
                   <option value="ongoing">Tertunda</option>
-                  <option value="issues">Ada kendala</option>
                 </select>
               </label>
               <button
@@ -642,14 +655,26 @@ export default function Dashboard() {
                 <table className="report-table">
                   <thead>
                     <tr>
-                      <th>Tanggal mulai</th>
+                      <th aria-sort={tableSort.field === "tglMulai" ? (tableSort.direction === 1 ? "ascending" : "descending") : "none"}>
+                        <button type="button" className="report-sort-button" onClick={() => toggleTableSort("tglMulai")}>
+                          Tanggal mulai <Icon name={tableSort.field === "tglMulai" ? (tableSort.direction === 1 ? "sortUp" : "sortDown") : "sort"} size={13} />
+                        </button>
+                      </th>
                       <th>Aplikasi & daerah</th>
                       <th>Menu</th>
                       <th>Permasalahan</th>
                       <th>Solusi</th>
-                      <th>Tanggal selesai</th>
+                      <th aria-sort={tableSort.field === "tglSelesai" ? (tableSort.direction === 1 ? "ascending" : "descending") : "none"}>
+                        <button type="button" className="report-sort-button" onClick={() => toggleTableSort("tglSelesai")}>
+                          Tanggal selesai <Icon name={tableSort.field === "tglSelesai" ? (tableSort.direction === 1 ? "sortUp" : "sortDown") : "sort"} size={13} />
+                        </button>
+                      </th>
                       <th>Keterangan</th>
-                      <th>Status</th>
+                      <th aria-sort={tableSort.field === "status" ? (tableSort.direction === 1 ? "ascending" : "descending") : "none"}>
+                        <button type="button" className="report-sort-button" onClick={() => toggleTableSort("status")}>
+                          Status <Icon name={tableSort.field === "status" ? (tableSort.direction === 1 ? "sortUp" : "sortDown") : "sort"} size={13} />
+                        </button>
+                      </th>
                       <th>Aksi</th>
                     </tr>
                   </thead>
