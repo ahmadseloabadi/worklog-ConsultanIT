@@ -180,12 +180,15 @@ export default function DraftQueue({
                     <strong>{draft.namaAplikasiDaerah || "Laporan tanpa nama"}</strong>
                     <span>{draft.menu || "Menu belum diisi"}</span>
                   </div>
+                  <span className={`report-status ${draft.tglSelesai ? "is-complete" : "is-open"}`}>
+                    {draft.tglSelesai ? "Selesai" : "Tertunda"}
+                  </span>
                   <span className="draft-month">{targetMonth(draft.tglMulai)}</span>
                 </div>
 
                 <div className="draft-card-meta">
-                  <span>{displayDate(draft.tglMulai)}</span>
-                  {draft.tglSelesai && <span>Selesai {displayDate(draft.tglSelesai)}</span>}
+                  <span>Mulai {displayDate(draft.tglMulai)}</span>
+                  <span>{draft.tglSelesai ? `Selesai ${displayDate(draft.tglSelesai)}` : "Tanggal selesai: Tertunda"}</span>
                   {draftImages.length > 0 && (
                     <span className="attachment-tag">{draftImages.length} bukti</span>
                   )}
@@ -201,8 +204,9 @@ export default function DraftQueue({
                   <dl>
                     <div><dt>Nama Aplikasi & Daerah</dt><dd>{draft.namaAplikasiDaerah || "-"}</dd></div>
                     <div><dt>Menu</dt><dd>{draft.menu || "-"}</dd></div>
+                    <div><dt>Status pekerjaan</dt><dd>{draft.tglSelesai ? "Selesai" : "Tertunda"}</dd></div>
                     <div><dt>Tanggal mulai</dt><dd>{displayDate(draft.tglMulai)}</dd></div>
-                    <div><dt>Tanggal selesai</dt><dd>{displayDate(draft.tglSelesai)}</dd></div>
+                    <div><dt>Tanggal selesai</dt><dd>{draft.tglSelesai ? displayDate(draft.tglSelesai) : "Tertunda"}</dd></div>
                     <div><dt>Permasalahan</dt><dd>{draft.permasalahan || "-"}</dd></div>
                     <div><dt>Solusi</dt><dd>{draft.solusi || "-"}</dd></div>
                     <div><dt>Keterangan</dt><dd>{draft.keterangan || "-"}</dd></div>

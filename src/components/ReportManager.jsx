@@ -7,6 +7,7 @@ import { findSimilarValueGroups } from "@/lib/similarValues";
 import { ActionToast, ConfirmationDialog, useConfirmation } from "@/components/ActionFeedback";
 import ReportDetailDialog from "@/components/ReportDetailDialog";
 import Icon from "@/components/Icon";
+import WorkStatusToggle from "@/components/WorkStatusToggle";
 
 const emptyReport = {
   namaAplikasiDaerah: "",
@@ -734,25 +735,18 @@ export default function ReportManager() {
                 <span className="field-label">Menu <span className="required-mark">*</span></span>
                 <input className="field-control" value={form.menu} onChange={(event) => setForm({ ...form, menu: event.target.value })} required />
               </label>
-              <label className="field">
-                <span className="field-label">Status pekerjaan</span>
-                <select
-                  className="field-control"
-                  value={form.tglSelesai ? "completed" : "pending"}
-                  onChange={(event) => {
-                    const today = todayAsInputValue();
-                    setForm({
-                      ...form,
-                      tglSelesai: event.target.value === "pending"
-                        ? ""
-                        : form.tglSelesai || (form.tglMulai > today ? form.tglMulai : today),
-                    });
-                  }}
-                >
-                  <option value="completed">Selesai</option>
-                  <option value="pending">Tertunda</option>
-                </select>
-              </label>
+              <WorkStatusToggle
+                value={form.tglSelesai ? "completed" : "pending"}
+                onChange={(status) => {
+                  const today = todayAsInputValue();
+                  setForm({
+                    ...form,
+                    tglSelesai: status === "pending"
+                      ? ""
+                      : form.tglSelesai || (form.tglMulai > today ? form.tglMulai : today),
+                  });
+                }}
+              />
               <div className="field-grid">
                 <label className="field">
                   <span className="field-label">Tanggal mulai <span className="required-mark">*</span></span>
