@@ -185,7 +185,7 @@ export default function AppHeader() {
         <Link to="/dashboard" className="brand-link" aria-label="Daily Worklog beranda">
           <span className="brand-symbol" aria-hidden="true">W</span>
           <span className="brand-copy">
-            <span className="brand-overline">SELO · WORKLOG</span>
+            <span className="brand-overline">CONSULTANT · WORKLOG</span>
             <strong>Daily Worklog</strong>
           </span>
         </Link>
@@ -242,7 +242,7 @@ export default function AppHeader() {
           <span className="connection-dot" />
           <span>{session ? "Google tersambung" : "Masuk untuk sinkronisasi"}</span>
           {countError && <span className="sidebar-count-error" role="status">Jumlah laporan tidak dapat dimuat.</span>}
-          <span className="sidebar-copyright"><strong>© {new Date().getFullYear()} AHMAD SELO ABADI</strong></span>
+          <span className="sidebar-copyright"><strong>© {new Date().getFullYear()}  AHMAD SELO ABADI</strong></span>
         </div>
       </aside>
 
@@ -256,10 +256,6 @@ export default function AppHeader() {
         >
           <Icon name={sidebarCollapsed ? "panelOpen" : "panelClose"} size={18} />
         </button>
-        {/* <div className="mainbar-title">
-          <span>SELO · WORKLOG</span>
-          <strong>{pageTitle}</strong>
-        </div> */}
         <div className="topbar-actions">
           {authMessage && <span className="session-loading" role="alert">{authMessage}</span>}
           {status === "loading" ? (
