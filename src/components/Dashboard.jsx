@@ -38,6 +38,12 @@ function getMonthKey(value) {
   return value ? value.slice(0, 7) : "";
 }
 
+function getResolutionDays(item) {
+  if (!item?.tglMulai || !item?.tglSelesai) return null;
+  const days = Math.round((asDate(item.tglSelesai) - asDate(item.tglMulai)) / 86400000);
+  return Number.isFinite(days) && days >= 0 ? days : null;
+}
+
 function formatMonth(value) {
   if (!value) return "";
   const [year, month] = value.split("-").map(Number);
@@ -138,8 +144,9 @@ export default function Dashboard() {
     if (statusFilter === "completed" && !item.tglSelesai) return false;
     if (statusFilter === "ongoing" && item.tglSelesai) return false;
     if (statusFilter === "issues" && !item.permasalahan.trim()) return false;
+    if (chartSeries === "average" && getResolutionDays(item) === null) return false;
     return true;
-  }), [endDate, startDate, statusFilter, worklogs]);
+  }), [chartSeries, endDate, startDate, statusFilter, worklogs]);
   const priorityFiltered = useMemo(
     () => filteredByOtherFilters.filter((item) =>
       (monthFilter === "all" || getMonthKey(item.tglMulai) === monthFilter) &&
@@ -164,8 +171,8 @@ export default function Dashboard() {
     const withIssues = filtered.filter((item) => item.permasalahan.trim()).length;
     const resolutionDurations = filtered
       .filter((item) => item.tglSelesai)
-      .map((item) => Math.round((asDate(item.tglSelesai) - asDate(item.tglMulai)) / 86400000))
-      .filter((days) => Number.isFinite(days) && days >= 0);
+      .map(getResolutionDays)
+      .filter((days) => days !== null);
     return {
       total: filtered.length,
       completed,
@@ -190,8 +197,8 @@ export default function Dashboard() {
       };
       if (item.tglSelesai) {
         existing.completed += 1;
-        const days = Math.round((asDate(item.tglSelesai) - date) / 86400000);
-        if (Number.isFinite(days) && days >= 0) existing.resolutionDurations.push(days);
+        const days = getResolutionDays(item);
+        if (days !== null) existing.resolutionDurations.push(days);
       } else existing.pending += 1;
       counts.set(key, existing);
     });
