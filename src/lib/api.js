@@ -1,11 +1,14 @@
 import { checkTokenStatus } from "@/lib/auth";
 import { uploadImage, validateDriveFolder } from "@/lib/googleDrive";
 import {
+  deleteSavedTemplate,
   deleteWorklog,
+  getSavedTemplates,
   getWorklogs,
   insertRowsChronological,
   monthSheetName,
   normalizeSimilarWorklogs,
+  saveTemplates,
   updateWorklog,
   validateSpreadsheetAccess,
 } from "@/lib/googleSheets";
@@ -17,6 +20,14 @@ import {
  */
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]{10,}$/;
+const TEMPLATE_ID_PATTERN = /^[a-zA-Z0-9_-]{1,120}$/;
+const TEMPLATE_FIELDS = [
+  "namaAplikasiDaerah",
+  "menu",
+  "permasalahan",
+  "solusi",
+  "keterangan",
+];
 const isGoogleId = (value) => typeof value === "string" && ID_PATTERN.test(value);
 const hasText = (value) => typeof value === "string" && value.trim();
 
@@ -163,13 +174,76 @@ async function postValidate(body) {
   return { ok: true, spreadsheet, folder };
 }
 
+function validateTemplate(template, index = 0) {
+  const label = `Template nomor ${index + 1}`;
+  if (
+    !template ||
+    typeof template !== "object" ||
+    typeof template.id !== "string" ||
+    !TEMPLATE_ID_PATTERN.test(template.id || "") ||
+    !hasText(template.name) ||
+    template.name.trim().length > 100 ||
+    !template.fields ||
+    typeof template.fields !== "object" ||
+    Array.isArray(template.fields)
+  ) {
+    throw fail(`${label}: format template tidak valid.`);
+  }
+  const fields = {};
+  TEMPLATE_FIELDS.forEach((field) => {
+    const value = template.fields[field] ?? "";
+    if (typeof value !== "string") throw fail(`${label}: isi kolom template tidak valid.`);
+    fields[field] = value;
+  });
+  const now = new Date().toISOString();
+  return {
+    id: template.id,
+    name: template.name.trim(),
+    fields,
+    createdAt: typeof template.createdAt === "string" ? template.createdAt : now,
+    updatedAt: typeof template.updatedAt === "string" ? template.updatedAt : now,
+  };
+}
+
+async function getTemplates(url) {
+  const spreadsheetId = url.searchParams.get("spreadsheetId");
+  if (!isGoogleId(spreadsheetId)) throw fail("Spreadsheet belum diatur.");
+  return { templates: await getSavedTemplates(spreadsheetId) };
+}
+
+async function postTemplates(body) {
+  const { spreadsheetId } = body;
+  if (!isGoogleId(spreadsheetId)) throw fail("Spreadsheet belum diatur.");
+  const source = Array.isArray(body.templates) ? body.templates : [body.template];
+  if (!Array.isArray(source) || source.length === 0 || source.length > 500) {
+    throw fail("Pilih 1 sampai 500 template untuk disimpan.");
+  }
+  const templates = source.map(validateTemplate);
+  if (new Set(templates.map((template) => template.id)).size !== templates.length) {
+    throw fail("Data berisi ID template yang berulang.");
+  }
+  await saveTemplates(templates, spreadsheetId);
+  return { ok: true, count: templates.length };
+}
+
+async function deleteTemplate(id, body) {
+  if (!TEMPLATE_ID_PATTERN.test(id)) throw fail("ID template tidak valid.");
+  if (!isGoogleId(body.spreadsheetId)) throw fail("Spreadsheet belum diatur.");
+  await deleteSavedTemplate(id, body.spreadsheetId);
+  return { ok: true };
+}
+
 // ---------------- router ----------------
 
 async function route(method, url, body) {
   const path = url.pathname;
   const logId = path.match(/^\/api\/log\/([^/]+)$/)?.[1];
+  const templateId = path.match(/^\/api\/templates\/([^/]+)$/)?.[1];
 
   if (method === "GET" && path === "/api/dashboard") return getDashboard(url);
+  if (method === "GET" && path === "/api/templates") return getTemplates(url);
+  if (method === "POST" && path === "/api/templates") return postTemplates(body);
+  if (method === "DELETE" && templateId) return deleteTemplate(decodeURIComponent(templateId), body);
   if (method === "GET" && path === "/api/auth/status") return checkTokenStatus();
   if (method === "POST" && path === "/api/setup/validate") return postValidate(body);
   if (method === "POST" && path === "/api/upload") return postUpload(body);

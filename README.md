@@ -8,7 +8,7 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 
 ## Fitur
 
-- Form catat aktivitas, draft & template lokal (IndexedDB), kirim batch sampai 100 laporan
+- Form catat aktivitas, draft lokal (IndexedDB), template pada tab `TEMPLATE_APLIKASI` di spreadsheet, kirim batch sampai 100 laporan
 - Sheet bulanan otomatis (`Oktober_2026`, dst., atau duplikat dari tab `CONTOH` bila ada), disisipkan kronologis
 - Dashboard, Kelola Laporan (edit, hapus, filter), dan "Cari & rapikan data serupa"
 - Tanggal pekerjaan otomatis mengikuti hari ini, dapat diubah, dan laporan tertunda dapat dipantau dari halaman catatan aktivitas
@@ -40,7 +40,7 @@ cp .env.example .env      # isi VITE_GOOGLE_CLIENT_ID
 npm run dev               # http://localhost:3000
 ```
 
-Lalu buka menu **Setup Google**, tempel link spreadsheet dan folder Drive, tekan **Simpan setup**.
+Lalu buka menu **Setup Google**, tempel link spreadsheet (dan folder Drive jika ingin mengunggah bukti gambar), tekan **Simpan setup**.
 
 ## 3. Deploy gratis
 
@@ -59,8 +59,7 @@ Tambahkan URL hasil deploy ke **Authorized JavaScript origins** (langkah 1).
 - **Sesi Google ±1 jam.** Tanpa server tidak ada refresh token. Saat token habis, aplikasi mencoba memperbarui
   diam-diam setelah Anda mengklik sesuatu; bila gagal, tombol **Sambungkan ulang** muncul di header.
   Pengiriman otomatis terjadwal hanya berhasil selama token masih aktif; draft yang gagal tetap aman di antrean.
-- **Data lokal terikat origin.** Draft, template, dan setup tersimpan di browser per alamat situs. Di alamat baru
-  (mis. domain Vercel) semuanya mulai kosong. Kirim draft yang masih tertunda dari aplikasi lama lebih dulu.
+- **Data lokal terikat origin.** Draft dan setup tersimpan di browser per alamat situs; template tersimpan di spreadsheet yang dipilih. Template lama di IndexedDB dipindahkan otomatis saat spreadsheet terhubung.
 - **Jangan commit kredensial.** `.gitignore` sudah memblokir `.env*` dan file kunci service account.
   Client ID bersifat publik; keamanan data dijaga oleh izin Google pada spreadsheet dan folder.
 - Scope `drive` penuh dipakai agar folder dan spreadsheet yang sudah ada bisa diakses. Untuk pemakaian pribadi,

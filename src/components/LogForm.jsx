@@ -10,11 +10,10 @@ import { readGoogleSettings } from "@/lib/googleSettings";
 import {
   deleteDraft as deleteStoredDraft,
   deleteDrafts as deleteStoredDrafts,
-  deleteTemplate as deleteStoredTemplate,
+  deleteTemplate as deleteLegacyStoredTemplate,
   getSavedDrafts,
   getSavedTemplates,
   saveDraft as saveStoredDraft,
-  saveTemplate as saveStoredTemplate,
 } from "@/lib/draftStorage";
 
 function todayAsInputValue() {
@@ -86,6 +85,25 @@ function getTemplateApplicationName(template) {
     : "";
 }
 
+async function fetchSpreadsheetTemplates(spreadsheetId) {
+  const response = await apiFetch(`/api/templates?spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Template tidak dapat dibaca dari spreadsheet.");
+  if (!Array.isArray(data.templates)) throw new Error("Format template dari spreadsheet tidak valid.");
+  return data.templates;
+}
+
+async function saveSpreadsheetTemplates(templates, spreadsheetId) {
+  const response = await apiFetch("/api/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ templates, spreadsheetId }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Template gagal disimpan ke spreadsheet.");
+  return data;
+}
+
 export default function LogForm() {
   const { data: session } = useSession();
   const [form, setForm] = useState(createEmptyForm);
@@ -98,6 +116,7 @@ export default function LogForm() {
   const [templateName, setTemplateName] = useState("");
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const [templateError, setTemplateError] = useState("");
   const [worklogs, setWorklogs] = useState([]);
   const [recommendationStatus, setRecommendationStatus] = useState({ loading: false, error: "" });
@@ -205,17 +224,46 @@ export default function LogForm() {
 
   useEffect(() => {
     let cancelled = false;
-    getSavedTemplates()
-      .then((savedTemplates) => {
+    async function loadTemplates() {
+      setTemplatesLoaded(false);
+      setTemplateError("");
+      const settings = readGoogleSettings(session?.user?.email);
+      if (!settings?.spreadsheetId) {
+        setTemplates([]);
+        setTemplatesLoaded(true);
+        if (session?.user?.email) {
+          setTemplateError("Hubungkan spreadsheet di menu Setup Google untuk menggunakan template.");
+        }
+        return;
+      }
+
+      try {
+        let savedTemplates = await fetchSpreadsheetTemplates(settings.spreadsheetId);
+        const legacyTemplates = await getSavedTemplates();
+        if (legacyTemplates.length) {
+          await saveSpreadsheetTemplates(legacyTemplates, settings.spreadsheetId);
+          await Promise.all(legacyTemplates.map((template) => deleteLegacyStoredTemplate(template.id)));
+          savedTemplates = await fetchSpreadsheetTemplates(settings.spreadsheetId);
+          if (!cancelled) {
+            setMessage({
+              type: "success",
+              text: `${legacyTemplates.length} template lama berhasil dipindahkan ke spreadsheet.`,
+            });
+          }
+        }
         if (!cancelled) {
           setTemplates(savedTemplates.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
         }
-      })
-      .catch((error) => {
-        if (!cancelled) setTemplateError(error.message || "Template tidak dapat dibaca.");
-      });
+      } catch (error) {
+        if (!cancelled) setTemplateError(error.message || "Template tidak dapat dibaca dari spreadsheet.");
+      } finally {
+        if (!cancelled) setTemplatesLoaded(true);
+      }
+    }
+
+    void loadTemplates();
     return () => { cancelled = true; };
-  }, []);
+  }, [session?.user?.email]);
 
   useEffect(() => {
     let cancelled = false;
@@ -336,7 +384,15 @@ export default function LogForm() {
         createdAt: existingTemplate?.createdAt || now,
         updatedAt: now,
       };
-      await saveStoredTemplate(template);
+      const settings = readGoogleSettings(session?.user?.email);
+      if (!settings?.spreadsheetId) throw new Error("Hubungkan spreadsheet di menu Setup Google terlebih dahulu.");
+      const response = await apiFetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template, spreadsheetId: settings.spreadsheetId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Template gagal disimpan ke spreadsheet.");
       setTemplates((current) => [template, ...current.filter((item) => item.id !== template.id)]
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
       setSelectedTemplateId(template.id);
@@ -345,7 +401,7 @@ export default function LogForm() {
       setShowTemplateForm(false);
       setMessage({
         type: "success",
-        text: `Template “${name}” ${existingTemplate ? "berhasil diperbarui" : "tersimpan"} di browser ini.`,
+        text: `Template “${name}” ${existingTemplate ? "berhasil diperbarui" : "tersimpan"} di spreadsheet.`,
       });
     } catch (error) {
       setMessage({ type: "error", text: error.message || "Template gagal disimpan." });
@@ -404,17 +460,25 @@ export default function LogForm() {
     const template = templates.find((item) => item.id === selectedTemplateId);
     if (!template || !(await confirm({
       title: "Hapus template?",
-      message: `Template “${template.name}” akan dihapus dari browser ini.`,
+      message: `Template “${template.name}” akan dihapus dari spreadsheet ini.`,
       confirmLabel: "Hapus template",
       danger: true,
     }))) return;
     setMessage({ type: "progress", text: `Menghapus template “${template.name}”...` });
     try {
-      await deleteStoredTemplate(template.id);
+      const settings = readGoogleSettings(session?.user?.email);
+      if (!settings?.spreadsheetId) throw new Error("Hubungkan spreadsheet di menu Setup Google terlebih dahulu.");
+      const response = await apiFetch(`/api/templates/${encodeURIComponent(template.id)}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spreadsheetId: settings.spreadsheetId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Template gagal dihapus.");
       setTemplates((current) => current.filter((item) => item.id !== template.id));
       setSelectedTemplateId("");
       if (editingTemplateId === template.id) handleCancelTemplateEdit();
-      setMessage({ type: "success", text: `Template “${template.name}” berhasil dihapus.` });
+      setMessage({ type: "success", text: `Template “${template.name}” berhasil dihapus dari spreadsheet.` });
     } catch (error) {
       setMessage({ type: "error", text: error.message || "Template gagal dihapus." });
     }
@@ -675,6 +739,7 @@ export default function LogForm() {
   }, [drafts, draftsLoaded, hourlySchedule, scheduleEnabled, scheduleLoaded, scheduleTimes, session?.user?.email]);
 
   const normalizedTemplateSearch = templateSearch.trim().toLocaleLowerCase("id-ID");
+  const hasSpreadsheetSetup = Boolean(readGoogleSettings(session?.user?.email)?.spreadsheetId);
   const filteredTemplates = templates.filter((template) => {
     const applicationName = getTemplateApplicationName(template);
     const searchableText = `${template.name} ${applicationName}`.toLocaleLowerCase("id-ID");
@@ -713,22 +778,25 @@ export default function LogForm() {
           <div className="template-panel-heading">
             <div>
               <h3 id="template-heading">Template pekerjaan</h3>
-              <p>Simpan dan gunakan kembali isi pekerjaan yang sering berulang.</p>
+              <p>Template tersimpan di spreadsheet yang dipilih, bukan di penyimpanan lokal browser.</p>
             </div>
-            <button
-              className="text-button"
-              type="button"
-              onClick={() => {
-                if (editingTemplateId) {
-                  handleCancelTemplateEdit();
-                  return;
-                }
-                setTemplateName([form.namaAplikasiDaerah, form.menu].filter(Boolean).join(" - "));
-                setShowTemplateForm((visible) => !visible);
-              }}
-            >
-              {editingTemplateId ? "Batal edit" : showTemplateForm ? "Tutup" : "Simpan form"}
-            </button>
+            <div className="template-panel-actions">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  if (editingTemplateId) {
+                    handleCancelTemplateEdit();
+                    return;
+                  }
+                  setTemplateName([form.namaAplikasiDaerah, form.menu].filter(Boolean).join(" - "));
+                  setShowTemplateForm((visible) => !visible);
+                }}
+                disabled={!templatesLoaded || !hasSpreadsheetSetup}
+              >
+                {editingTemplateId ? "Batal edit" : showTemplateForm ? "Tutup" : "Simpan form"}
+              </button>
+            </div>
           </div>
           <div className="template-search">
             <input
@@ -748,10 +816,12 @@ export default function LogForm() {
               }}
               aria-label="Cari template berdasarkan nama template atau aplikasi"
               placeholder="Cari nama template atau aplikasi..."
-              disabled={Boolean(editingTemplateId)}
+              disabled={!templatesLoaded || Boolean(editingTemplateId)}
             />
             <p role="status">
-              {normalizedTemplateSearch
+              {!templatesLoaded
+                ? "Memuat template..."
+                : normalizedTemplateSearch
                 ? `${filteredTemplates.length} template ditemukan`
                 : `${templates.length} template tersimpan`}
             </p>
@@ -761,6 +831,7 @@ export default function LogForm() {
               className="field-control"
               aria-label="Pilih template pekerjaan"
               value={selectedTemplateId}
+              disabled={!templatesLoaded || !hasSpreadsheetSetup}
               onChange={(event) => {
                 setSelectedTemplateId(event.target.value);
                 if (editingTemplateId) handleCancelTemplateEdit();
@@ -783,17 +854,17 @@ export default function LogForm() {
                 </optgroup>
               ))}
             </select>
-            <button className="text-button" type="button" onClick={handleLoadTemplate} disabled={!selectedTemplateId}>
+            <button className="text-button" type="button" onClick={handleLoadTemplate} disabled={!selectedTemplateId || !templatesLoaded}>
               Gunakan
             </button>
-            <button className="text-button" type="button" onClick={() => void handleEditTemplate()} disabled={!selectedTemplateId}>
+            <button className="text-button" type="button" onClick={() => void handleEditTemplate()} disabled={!selectedTemplateId || !templatesLoaded}>
               Edit
             </button>
             <button
               className="remove-button"
               type="button"
               onClick={() => void handleDeleteTemplate()}
-              disabled={!selectedTemplateId}
+              disabled={!selectedTemplateId || !templatesLoaded}
             >
               Hapus
             </button>
@@ -812,7 +883,7 @@ export default function LogForm() {
                 className="text-button"
                 type="button"
                 onClick={() => void handleSaveTemplate()}
-                disabled={savingTemplate}
+                disabled={savingTemplate || !templatesLoaded}
               >
                 {savingTemplate ? "Menyimpan..." : editingTemplateId ? "Simpan perubahan" : "Simpan template"}
               </button>

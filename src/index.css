@@ -479,6 +479,14 @@ button {
   justify-content: space-between;
 }
 
+.template-panel-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .template-panel-heading h3 {
   margin: 0;
   color: var(--ink);
@@ -535,7 +543,8 @@ button {
 }
 
 .template-controls button:disabled,
-.template-save-form button:disabled {
+.template-save-form button:disabled,
+.template-panel-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -2223,6 +2232,16 @@ button {
     align-items: stretch;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .template-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .template-panel-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .template-controls .field-control,

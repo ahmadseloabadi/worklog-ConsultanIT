@@ -20,6 +20,8 @@ const MONTH_NAMES_ID = [
 const MONTH_INDEX_BY_NAME = new Map(
   MONTH_NAMES_ID.map((name, index) => [name.toLowerCase(), index])
 );
+const TEMPLATE_SHEET_NAME = "TEMPLATE_APLIKASI";
+const TEMPLATE_HEADER = ["ID", "Nama template", "Data template", "Dibuat", "Diperbarui"];
 
 export async function validateSpreadsheetAccess(spreadsheetId) {
   const file = await driveGetFile(spreadsheetId, "id,name,mimeType,capabilities(canEdit)");
@@ -32,6 +34,119 @@ export async function validateSpreadsheetAccess(spreadsheetId) {
 
   await getSheetsClient().spreadsheets.get({ spreadsheetId, fields: "spreadsheetId" });
   return { id: file.id, name: file.name };
+}
+
+async function getTemplateSheet(spreadsheetId, create = false) {
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const existing = meta.data.sheets.find(
+    (sheet) => sheet.properties.title === TEMPLATE_SHEET_NAME
+  );
+  if (existing) return { sheets, sheet: existing.properties };
+  if (!create) return { sheets, sheet: null };
+
+  const response = await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        addSheet: {
+          properties: {
+            title: TEMPLATE_SHEET_NAME,
+            gridProperties: { frozenRowCount: 1 },
+          },
+        },
+      }],
+    },
+  });
+  const sheet = response.data.replies[0].addSheet.properties;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${TEMPLATE_SHEET_NAME}'!A1:E1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [TEMPLATE_HEADER] },
+  });
+  return { sheets, sheet };
+}
+
+export async function getSavedTemplates(spreadsheetId) {
+  const { sheets, sheet } = await getTemplateSheet(spreadsheetId);
+  if (!sheet) return [];
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${TEMPLATE_SHEET_NAME}'!A2:E`,
+  });
+  return (response.data.values || []).flatMap((row) => {
+    if (!row[0]) return [];
+    let fields;
+    try {
+      fields = JSON.parse(row[2] || "{}");
+    } catch {
+      throw new Error(`Data template “${row[1] || row[0]}” tidak valid di spreadsheet.`);
+    }
+    return [{
+      id: row[0],
+      name: row[1] || "",
+      fields,
+      createdAt: row[3] || "",
+      updatedAt: row[4] || "",
+    }];
+  });
+}
+
+export async function saveTemplates(templates, spreadsheetId) {
+  if (!templates.length) return;
+  const { sheets } = await getTemplateSheet(spreadsheetId, true);
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${TEMPLATE_SHEET_NAME}'!A2:A`,
+  });
+  const rows = response.data.values || [];
+  const rowById = new Map(rows.map((row, index) => [row[0], index + 2]));
+  let nextRow = rows.length + 2;
+  const data = templates.map((template) => {
+    const row = rowById.get(template.id) || nextRow++;
+    return {
+      range: `'${TEMPLATE_SHEET_NAME}'!A${row}:E${row}`,
+      values: [[
+        template.id,
+        template.name,
+        JSON.stringify(template.fields),
+        template.createdAt,
+        template.updatedAt,
+      ]],
+    };
+  });
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    valueInputOption: "RAW",
+    requestBody: { data },
+  });
+}
+
+export async function deleteSavedTemplate(id, spreadsheetId) {
+  const { sheets, sheet } = await getTemplateSheet(spreadsheetId);
+  if (!sheet) return;
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${TEMPLATE_SHEET_NAME}'!A2:A`,
+  });
+  const rowIndex = (response.data.values || []).findIndex((row) => row[0] === id);
+  if (rowIndex < 0) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId: sheet.sheetId,
+            dimension: "ROWS",
+            startIndex: rowIndex + 1,
+            endIndex: rowIndex + 2,
+          },
+        },
+      }],
+    },
+  });
 }
 
 /** Nama sheet bulan dari sebuah tanggal, mis. "Februari_2026" */
