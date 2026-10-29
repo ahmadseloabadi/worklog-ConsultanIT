@@ -66,18 +66,13 @@ export default function Dashboard() {
   const [menu, setMenu] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [tableSearch, setTableSearch] = useState("");
-  const [tableStartDate, setTableStartDate] = useState("");
-  const [tableEndDate, setTableEndDate] = useState("");
-  const [tableApplication, setTableApplication] = useState("all");
-  const [tableMenu, setTableMenu] = useState("all");
-  const [tableStatus, setTableStatus] = useState("all");
   const [tablePage, setTablePage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [tableSort, setTableSort] = useState({ field: "tglMulai", direction: -1 });
+  const [chartHover, setChartHover] = useState(null);
+  const [chartSeries, setChartSeries] = useState("all");
   const hasDashboardFilters = monthFilter !== "all" || Boolean(startDate || endDate) ||
     application !== "all" || menu !== "all" || statusFilter !== "all";
-  const hasTableFilters = Boolean(tableSearch || tableStartDate || tableEndDate) ||
-    tableApplication !== "all" || tableMenu !== "all" || tableStatus !== "all";
 
   useEffect(() => {
     let cancelled = false;
@@ -137,13 +132,6 @@ export default function Dashboard() {
       .filter(Boolean))].sort((a, b) => a.localeCompare(b, "id")),
     [application, worklogs]
   );
-  const tableMenus = useMemo(
-    () => [...new Set(worklogs
-      .filter((item) => tableApplication === "all" || item.aplikasi === tableApplication)
-      .map((item) => item.menu)
-      .filter(Boolean))].sort((a, b) => a.localeCompare(b, "id")),
-    [tableApplication, worklogs]
-  );
 
   const filteredByOtherFilters = useMemo(() => worklogs.filter((item) => {
     if (!item.tglMulai || (startDate && item.tglMulai < startDate) || (endDate && item.tglMulai > endDate)) return false;
@@ -191,17 +179,39 @@ export default function Dashboard() {
 
   const monthlyActivity = useMemo(() => {
     const counts = new Map();
+    let latestDate = null;
     activityFiltered.forEach((item) => {
       const date = asDate(item.tglMulai);
       if (!date) return;
+      if (!latestDate || date > latestDate) latestDate = date;
       const key = `${date.getFullYear()}-${date.getMonth()}`;
-      const existing = counts.get(key) || { year: date.getFullYear(), month: date.getMonth(), count: 0 };
-      existing.count += 1;
+      const existing = counts.get(key) || {
+        year: date.getFullYear(), month: date.getMonth(), completed: 0, pending: 0, resolutionDurations: [],
+      };
+      if (item.tglSelesai) {
+        existing.completed += 1;
+        const days = Math.round((asDate(item.tglSelesai) - date) / 86400000);
+        if (Number.isFinite(days) && days >= 0) existing.resolutionDurations.push(days);
+      } else existing.pending += 1;
       counts.set(key, existing);
     });
-    return [...counts.values()]
-      .sort((a, b) => a.year - b.year || a.month - b.month)
-      .slice(-12);
+    if (!latestDate) return [];
+    return Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(latestDate.getFullYear(), latestDate.getMonth() - (11 - index), 1);
+      const item = counts.get(`${date.getFullYear()}-${date.getMonth()}`) || {
+        year: date.getFullYear(), month: date.getMonth(), completed: 0, pending: 0, resolutionDurations: [],
+      };
+      return {
+        ...item,
+        year: date.getFullYear(),
+        month: date.getMonth(),
+        count: item.completed + item.pending,
+        total: item.completed + item.pending,
+        averageResolutionDays: item.resolutionDurations.length
+          ? Math.round(item.resolutionDurations.reduce((total, days) => total + days, 0) / item.resolutionDurations.length)
+          : null,
+      };
+    });
   }, [activityFiltered]);
 
   const applicationIssues = useMemo(() => {
@@ -233,16 +243,8 @@ export default function Dashboard() {
 
   const tableRows = useMemo(() => {
     const query = normalizeText(tableSearch);
-    return [...worklogs]
+    return [...filtered]
       .filter((item) => {
-        if (monthFilter !== "all" && getMonthKey(item.tglMulai) !== monthFilter) return false;
-        if (tableStartDate && item.tglMulai < tableStartDate) return false;
-        if (tableEndDate && item.tglMulai > tableEndDate) return false;
-        if (tableApplication !== "all" && item.aplikasi !== tableApplication) return false;
-        if (tableMenu !== "all" && item.menu !== tableMenu) return false;
-        if (tableStatus === "completed" && !item.tglSelesai) return false;
-        if (tableStatus === "ongoing" && item.tglSelesai) return false;
-        if (tableStatus === "issues" && !item.permasalahan.trim()) return false;
         if (query && !normalizeText([
           item.aplikasi,
           item.menu,
@@ -266,13 +268,15 @@ export default function Dashboard() {
         if (!rightValue) return -1;
         return leftValue.localeCompare(rightValue, "id") * tableSort.direction;
       });
-  }, [monthFilter, tableApplication, tableEndDate, tableMenu, tableSearch, tableSort, tableStartDate, tableStatus, worklogs]);
+  }, [filtered, tableSearch, tableSort]);
   const pageCount = Math.ceil(tableRows.length / pageSize);
   const currentPage = Math.min(tablePage, Math.max(1, pageCount));
   const firstVisibleRow = tableRows.length ? (currentPage - 1) * pageSize + 1 : 0;
   const lastVisibleRow = Math.min(currentPage * pageSize, tableRows.length);
   const paginatedRows = tableRows.slice(firstVisibleRow - 1, lastVisibleRow);
-  const maxMonthlyActivity = Math.max(1, ...monthlyActivity.map((item) => item.count));
+  const maxMonthlyActivity = Math.max(1, ...monthlyActivity.flatMap((item) => [
+    item.completed, item.pending, item.total,
+  ]));
   const maxBlockerCount = Math.max(1, ...blockers.map((item) => item.count));
   const maxApplicationIssueCount = Math.max(1, ...applicationIssues.map((item) => item.issueCount));
   const blockerPageCount = Math.ceil(blockers.length / 5);
@@ -295,7 +299,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     setTablePage(1);
-  }, [monthFilter, pageSize, tableApplication, tableEndDate, tableMenu, tableSearch, tableStartDate, tableStatus]);
+  }, [filtered, pageSize, tableSearch]);
 
   function toggleTableSort(field) {
     setTableSort((current) => ({
@@ -305,6 +309,33 @@ export default function Dashboard() {
     setTablePage(1);
   }
 
+  function resetChartFilters() {
+    setChartSeries("all");
+    setStatusFilter("all");
+    setMonthFilter("all");
+  }
+
+  function toggleChartSeries(series) {
+    const isActive = chartSeries === series || (chartSeries === "all" && series === "total");
+    if (isActive) {
+      resetChartFilters();
+      return;
+    }
+    setChartSeries(series);
+    setStatusFilter(series === "completed" || series === "average" ? "completed" : series === "pending" ? "ongoing" : "all");
+  }
+
+  function toggleChartBar(series, monthKey) {
+    const status = series === "completed" || series === "average" ? "completed" : series === "pending" ? "ongoing" : "all";
+    if (chartSeries === series && monthFilter === monthKey && statusFilter === status) {
+      resetChartFilters();
+      return;
+    }
+    setChartSeries(series);
+    setStatusFilter(status);
+    setMonthFilter(monthKey);
+  }
+
   function resetFilters() {
     setMonthFilter("all");
     setStartDate("");
@@ -312,16 +343,6 @@ export default function Dashboard() {
     setApplication("all");
     setMenu("all");
     setStatusFilter("all");
-  }
-
-  function resetTableFilters() {
-    setTableSearch("");
-    setTableStartDate("");
-    setTableEndDate("");
-    setTableApplication("all");
-    setTableMenu("all");
-    setTableStatus("all");
-    setTablePage(1);
   }
 
   return (
@@ -467,34 +488,108 @@ export default function Dashboard() {
             <div className="dashboard-panel-heading">
               <div>
                 <span className="panel-eyebrow">Tren laporan</span>
-                <h2>Aktivitas per bulan</h2>
+                <h2>Ringkasan aktivitas bulanan</h2>
               </div>
-              <span className="panel-badge">Klik batang untuk filter</span>
+              <span className="panel-badge">Hover untuk detail · klik legenda untuk fokus</span>
+            </div>
+            <div className="activity-legend" aria-label="Legenda grafik">
+              {[
+                ["total", "Total laporan", "#5574a5"],
+                ["completed", "Laporan selesai", "#3c8b73"],
+                ["pending", "Laporan tertunda", "#d99a39"],
+                ["average", "Rata-rata (hari)", "#ad5361"],
+              ].map(([series, label, color]) => (
+                <button
+                  type="button"
+                  key={series}
+                  className={`activity-legend-button${chartSeries === series || (chartSeries === "all" && series === "total") ? " is-active" : ""}`}
+                  aria-pressed={chartSeries === series || (chartSeries === "all" && series === "total")}
+                  onClick={() => toggleChartSeries(series)}
+                >
+                  <span className={`activity-legend-mark is-${series}`} style={{ "--legend-color": color }} />
+                  {label}
+                </button>
+              ))}
             </div>
             {monthlyActivity.length ? (
-              <div className="activity-chart" aria-label="Jumlah aktivitas per bulan">
-                {monthlyActivity.map((item) => (
-                  <button
-                    type="button"
-                    className={`activity-column${monthFilter === `${item.year}-${String(item.month + 1).padStart(2, "0")}` ? " is-selected" : ""}`}
-                    key={`${item.year}-${item.month}`}
-                    title={`Tampilkan ${item.count} laporan pada ${monthFormatter.format(new Date(item.year, item.month, 1))} ${item.year}`}
-                    aria-pressed={monthFilter === `${item.year}-${String(item.month + 1).padStart(2, "0")}`}
-                    onClick={() => {
-                      const key = `${item.year}-${String(item.month + 1).padStart(2, "0")}`;
-                      setMonthFilter((current) => current === key ? "all" : key);
-                    }}
-                  >
-                    <span className="activity-value">{item.count}</span>
-                    <div className="activity-bar-track">
-                      <span style={{ height: `${Math.max(6, (item.count / maxMonthlyActivity) * 100)}%` }} />
+              <div className="activity-chart-shell">
+                <div className="activity-svg-wrap">
+                  <svg className="activity-chart activity-chart-svg" viewBox="0 0 960 330" role="img" aria-label="Tren total laporan per bulan">
+                  {[0, 0.33, 0.66, 1].map((ratio) => {
+                    const y = 150 - ratio * 105;
+                    return <g key={ratio}><line x1="54" x2="940" y1={y} y2={y} className="activity-grid-line" /><text x="42" y={y + 4} className="activity-axis-label">{Math.round(maxMonthlyActivity * ratio)}</text></g>;
+                  })}
+                  <line x1="54" x2="940" y1="150" y2="150" className="activity-center-line" />
+                  <text x="14" y="142" className="activity-axis-title" transform="rotate(-90 14 142)">Jumlah laporan</text>
+                  {monthlyActivity.map((item, index) => {
+                    const center = 82 + index * (823 / Math.max(1, monthlyActivity.length - 1));
+                    const totalHeight = item.total ? Math.max(22, (item.total / maxMonthlyActivity) * 105) : 22;
+                    const totalY = 150 - totalHeight;
+                    const detailMaxHeight = 88;
+                    const completedHeight = item.completed ? Math.max(28, (item.completed / maxMonthlyActivity) * detailMaxHeight) : 24;
+                    const pendingHeight = item.pending ? Math.max(28, (item.pending / maxMonthlyActivity) * detailMaxHeight) : 24;
+                    const averageMax = Math.max(1, ...monthlyActivity.map((entry) => entry.averageResolutionDays || 0));
+                    const averageHeight = item.averageResolutionDays === null
+                      ? 24
+                      : Math.max(28, (item.averageResolutionDays / averageMax) * detailMaxHeight);
+                    const monthKey = `${item.year}-${String(item.month + 1).padStart(2, "0")}`;
+                    const isHovered = chartHover?.index === index;
+                    const isMonthSelected = monthFilter !== "all";
+                    const isDimmed = isMonthSelected
+                      ? monthFilter !== monthKey
+                      : chartHover && !isHovered;
+                    return (
+                      <g
+                        key={`${item.year}-${item.month}`}
+                        className={`activity-data-group${isDimmed ? " is-dimmed" : ""}${monthFilter === monthKey ? " is-selected" : ""}`}
+                        onMouseEnter={() => setChartHover({ index, x: (center / 960) * 100, top: Math.max(8, (totalY / 330) * 100), item })}
+                        onMouseLeave={() => setChartHover(null)}
+                        onClick={() => {
+                          toggleChartBar("total", monthKey);
+                        }}
+                        role="button"
+                        tabIndex="0"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            toggleChartBar("total", monthKey);
+                          }
+                        }}
+                        aria-label={`${formatMonth(monthKey)}: ${item.completed} selesai, ${item.pending} tertunda, rata-rata ${item.averageResolutionDays ?? 0} hari`}
+                      >
+                        <rect x={center - 34} y={totalY} width="68" height={totalHeight} rx="5" className={`activity-total-frame${chartSeries !== "all" && chartSeries !== "total" ? " is-muted" : ""}`} onClick={(event) => { event.stopPropagation(); toggleChartBar("total", monthKey); }} aria-label={`${item.total} total laporan`} />
+                        <text x={center} y={totalY + totalHeight / 2 + 5} className={`activity-total-value${chartSeries !== "all" && chartSeries !== "total" ? " is-muted" : ""}`}>{item.total}</text>
+                        <circle cx={center} cy={totalY} r="5" className={`activity-total-point${chartSeries !== "all" && chartSeries !== "total" ? " is-muted" : ""}`} />
+                        <rect x={center - 34} y="150" width="22" height={completedHeight} rx="5" className={`activity-bar is-completed${chartSeries !== "all" && chartSeries !== "completed" ? " is-muted" : ""}`} onClick={(event) => { event.stopPropagation(); toggleChartBar("completed", monthKey); }} aria-label={`${item.completed} laporan selesai`} />
+                        <text x={center - 23} y={167} className={`activity-detail-value${chartSeries !== "all" && chartSeries !== "completed" ? " is-muted" : ""}`}>{item.completed}</text>
+                        <rect x={center - 11} y="150" width="22" height={pendingHeight} rx="5" className={`activity-bar is-pending${chartSeries !== "all" && chartSeries !== "pending" ? " is-muted" : ""}`} onClick={(event) => { event.stopPropagation(); toggleChartBar("pending", monthKey); }} aria-label={`${item.pending} laporan tertunda`} />
+                        <text x={center} y={167} className={`activity-detail-value${chartSeries !== "all" && chartSeries !== "pending" ? " is-muted" : ""}`}>{item.pending}</text>
+                        <rect x={center + 12} y="150" width="22" height={averageHeight} rx="5" className={`activity-bar is-average${chartSeries !== "all" && chartSeries !== "average" ? " is-muted" : ""}`} onClick={(event) => { event.stopPropagation(); toggleChartBar("average", monthKey); }} aria-label={`Rata-rata ${item.averageResolutionDays ?? 0} hari`} />
+                        <text x={center + 23} y={167} className={`activity-detail-value${chartSeries !== "all" && chartSeries !== "average" ? " is-muted" : ""}`}>{item.averageResolutionDays ?? 0}</text>
+                        <text x={center} y="274" textAnchor="middle" className="activity-month">{monthFormatter.format(new Date(item.year, item.month, 1))} {String(item.year).slice(-2)}</text>
+                      </g>
+                    );
+                  })}
+                  <polyline
+                    points={monthlyActivity.map((item, index) => {
+                    const center = 82 + index * (823 / Math.max(1, monthlyActivity.length - 1));
+                      const y = 150 - (item.total ? Math.max(22, (item.total / maxMonthlyActivity) * 105) : 22);
+                      return `${center},${y}`;
+                    }).join(" ")}
+                    className={`activity-line is-focused${chartSeries !== "all" && chartSeries !== "total" ? " is-muted" : ""}`}
+                  />
+                  </svg>
+                  {chartHover && (
+                    <div className={`activity-tooltip${chartHover.x > 72 ? " is-right" : ""}`} style={{ left: `${chartHover.x}%`, top: `${chartHover.top}%` }}>
+                      <strong>{formatMonth(`${chartHover.item.year}-${String(chartHover.item.month + 1).padStart(2, "0")}`)}</strong>
+                      <b>{chartHover.item.total} total laporan</b>
+                      <span>{chartHover.item.count} laporan · {chartHover.item.completed} selesai · {chartHover.item.pending} tertunda</span>
+                      <span>Rata-rata selesai: {chartHover.item.averageResolutionDays ?? 0} hari</span>
                     </div>
-                    <span className="activity-month">{monthFormatter.format(new Date(item.year, item.month, 1))} {String(item.year).slice(-2)}</span>
-                  </button>
-                ))}
+                  )}
+                </div>
               </div>
             ) : <div className="chart-empty">Belum ada aktivitas pada periode ini.</div>}
-            <p className="chart-footnote">Grafik membandingkan 12 bulan terakhir sesuai filter aplikasi, menu, status, dan rentang tanggal.</p>
+            <p className="chart-footnote">Klik batang atau bulan untuk memfilter laporan. Grafik menampilkan 12 bulan terakhir sesuai filter aplikasi, menu, status, dan rentang tanggal.</p>
           </section>
 
           <section className="dashboard-chart-grid">
@@ -609,46 +704,6 @@ export default function Dashboard() {
                   placeholder="Aplikasi, menu, kendala, solusi..."
                 />
               </label>
-              <label className="dashboard-filter">
-                <span>Dari tanggal</span>
-                <input type="date" value={tableStartDate} max={tableEndDate || undefined} onChange={(event) => setTableStartDate(event.target.value)} />
-              </label>
-              <label className="dashboard-filter">
-                <span>Sampai tanggal</span>
-                <input type="date" value={tableEndDate} min={tableStartDate || undefined} onChange={(event) => setTableEndDate(event.target.value)} />
-              </label>
-              <label className="dashboard-filter">
-                <span>Aplikasi & daerah</span>
-                <select value={tableApplication} onChange={(event) => { setTableApplication(event.target.value); setTableMenu("all"); }}>
-                  <option value="all">Semua aplikasi</option>
-                  {applications.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="dashboard-filter">
-                <span>Menu</span>
-                <select value={tableMenu} onChange={(event) => setTableMenu(event.target.value)}>
-                  <option value="all">Semua menu</option>
-                  {tableMenus.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="dashboard-filter">
-                <span>Status</span>
-                <select value={tableStatus} onChange={(event) => setTableStatus(event.target.value)}>
-                  <option value="all">Semua status</option>
-                  <option value="completed">Selesai</option>
-                  <option value="ongoing">Tertunda</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className="filter-reset-button report-reset-button"
-                onClick={resetTableFilters}
-                disabled={!hasTableFilters}
-                title={hasTableFilters ? "Hapus semua filter tabel" : "Tidak ada filter aktif"}
-              >
-                <Icon name="reset" size={15} />
-                <span>Reset filter</span>
-              </button>
             </div>
             {tableRows.length ? (
               <div className="report-table-wrap">
