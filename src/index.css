@@ -2825,7 +2825,9 @@ button {
 
 .activity-svg-wrap {
   position: relative;
-  overflow-x: auto;
+  /* Tooltip boleh keluar dari area SVG supaya tidak terpotong saat
+     ditempatkan di atas titik dengan nilai tinggi. */
+  overflow: visible;
 }
 
 .activity-chart-svg {
