@@ -208,6 +208,7 @@ export async function getOrCreateMonthlySheet(dateStr, spreadsheetId) {
             addSheet: {
               properties: {
                 title: sheetName,
+                index: meta.data.sheets.length,
                 gridProperties: { frozenRowCount: 1 },
               },
             },
@@ -740,9 +741,15 @@ export async function insertRowsChronological(entries, spreadsheetId) {
   const existingByTitle = new Map(
     meta.data.sheets.map((sheet) => [sheet.properties.title, sheet.properties])
   );
-  const missingGroups = [...groups.values()].filter(
-    (group) => !existingByTitle.has(group.sheetName) && !existingByTitle.has(group.legacySheetName)
-  );
+  const missingGroups = [...groups.values()]
+    .filter(
+      (group) => !existingByTitle.has(group.sheetName) && !existingByTitle.has(group.legacySheetName)
+    )
+    .sort((left, right) => {
+      const leftDate = parseRowDate(left.entries[0].rowValues[3]);
+      const rightDate = parseRowDate(right.entries[0].rowValues[3]);
+      return (leftDate?.getTime() || 0) - (rightDate?.getTime() || 0);
+    });
   const template = meta.data.sheets.find((sheet) => sheet.properties.title === "CONTOH");
   let headersToWrite = [];
 
@@ -750,9 +757,10 @@ export async function insertRowsChronological(entries, spreadsheetId) {
     const response = await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
-        requests: missingGroups.map((group) => ({
+        requests: missingGroups.map((group, index) => ({
           duplicateSheet: {
             sourceSheetId: template.properties.sheetId,
+            insertSheetIndex: meta.data.sheets.length + index,
             newSheetName: group.sheetName,
           },
         })),
@@ -772,10 +780,11 @@ export async function insertRowsChronological(entries, spreadsheetId) {
     const response = await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
-        requests: missingGroups.map((group) => ({
+        requests: missingGroups.map((group, index) => ({
           addSheet: {
             properties: {
               title: group.sheetName,
+              index: meta.data.sheets.length + index,
               gridProperties: { frozenRowCount: 1 },
             },
           },
