@@ -121,7 +121,7 @@ async function patchLog(id, body) {
   }
   const tglMulai = isoToDisplay(body.tglMulai);
   const tglSelesai = body.tglSelesai ? isoToDisplay(body.tglSelesai) : "";
-  if (!tglMulai || (body.tglSelesai && !tglSelesai) || (tglSelesai && tglSelesai < body.tglMulai)) {
+  if (!tglMulai || (body.tglSelesai && !tglSelesai) || (body.tglSelesai && body.tglSelesai < body.tglMulai)) {
     throw fail("Tanggal mulai/selesai tidak valid atau tanggal selesai lebih awal.");
   }
   if (typeof body.keterangan !== "string") throw fail("Keterangan tidak valid.");
