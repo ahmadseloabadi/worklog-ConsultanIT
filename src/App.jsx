@@ -7,6 +7,7 @@ const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const PendingPage = lazy(() => import("@/pages/PendingPage"));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
 const SetupPage = lazy(() => import("@/pages/SetupPage"));
+const MiniGamesPage = lazy(() => import("@/pages/MiniGamesPage"));
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/setup" element={<SetupPage />} />
+        <Route path="/mini-games" element={<MiniGamesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

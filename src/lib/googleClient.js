@@ -76,6 +76,12 @@ export function getSheetsClient() {
         get: async ({ spreadsheetId, range }) => ({
           data: await googleJson(`${SHEETS_BASE}/${spreadsheetId}/values/${enc(range)}`),
         }),
+        append: async ({ spreadsheetId, range, valueInputOption, insertDataOption, requestBody }) => ({
+          data: await googleJson(
+            `${SHEETS_BASE}/${spreadsheetId}/values/${enc(range)}:append?valueInputOption=${valueInputOption}&insertDataOption=${insertDataOption}`,
+            jsonBody("POST", requestBody)
+          ),
+        }),
         update: async ({ spreadsheetId, range, valueInputOption, requestBody }) => ({
           data: await googleJson(
             `${SHEETS_BASE}/${spreadsheetId}/values/${enc(range)}?valueInputOption=${valueInputOption}`,

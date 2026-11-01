@@ -33,6 +33,7 @@ export default function AppHeader() {
     "/dashboard": "Dashboard",
     "/reports": "Laporan",
     "/setup": "Setup Google",
+    "/mini-games": "Mini Game",
   }[pathname] || "Daily Worklog";
 
   useEffect(() => {
@@ -231,6 +232,10 @@ export default function AppHeader() {
           <NavLink aria-label="Laporan" to="/reports" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="reports" className="sidebar-nav-icon" />
             <span>Laporan</span>
+          </NavLink>
+          <NavLink aria-label="Mini Game" to="/mini-games" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+            <Icon name="gamepad" className="sidebar-nav-icon" />
+            <span>Mini Game</span>
           </NavLink>
           <NavLink aria-label="Setup Google" to="/setup" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="settings" className="sidebar-nav-icon" />

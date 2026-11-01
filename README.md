@@ -13,6 +13,7 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Dashboard, Kelola Laporan (edit, hapus, filter), dan "Cari & rapikan data serupa"
 - Tanggal pekerjaan otomatis mengikuti hari ini, dapat diubah, dan laporan tertunda dapat dipantau dari halaman catatan aktivitas
 - Navigasi sidebar responsif yang dapat diringkas, dengan menu Aktivitas terpisah untuk input dan tindak lanjut; badge jumlah draft dan laporan tertunda di-cache singkat agar perpindahan halaman tetap ringan
+- Mini Game dengan menu Start/Settings/Quit game, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred dan Bubble Wrap layar penuh, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard yang hanya menerima skor akhir Kompetitif
 - Upload bukti gambar ke Drive dan pratinjau di detail laporan
 - Setup Google per akun (link spreadsheet + folder Drive) dan pemeriksa token
 
@@ -41,6 +42,10 @@ npm run dev               # http://localhost:3000
 ```
 
 Lalu buka menu **Setup Google**, tempel link spreadsheet (dan folder Drive jika ingin mengunggah bukti gambar), tekan **Simpan setup**.
+
+Menu **Mini Game** memakai spreadsheet leaderboard bersama yang dikonfigurasi di `src/lib/miniGameScores.js`.
+Tab `MINI_GAME_HIGHSCORES` dibuat otomatis saat leaderboard dibuka. Bagikan spreadsheet tersebut dengan izin
+Editor kepada setiap akun Google yang boleh menyimpan skor; nama di ranking memakai bagian email sebelum `@`.
 
 ## 3. Deploy gratis
 
