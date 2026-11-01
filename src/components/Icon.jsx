@@ -38,6 +38,15 @@ const iconContent = {
     </>
   ),
   play: <path d="m8 5 12 7-12 7V5Z" />,
+  crown: (
+    <>
+      <path d="m3 8 5 4 4-7 4 7 5-4-2 12H5L3 8Z" />
+      <path d="M5 17h14" />
+      <circle cx="3" cy="7" r="1" />
+      <circle cx="12" cy="4" r="1" />
+      <circle cx="21" cy="7" r="1" />
+    </>
+  ),
   arrowLeft: <path d="m14 18-6-6 6-6M8 12h13" />,
   fullscreen: (
     <>

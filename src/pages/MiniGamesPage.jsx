@@ -31,6 +31,57 @@ function sortedLeaderboard(records) {
   );
 }
 
+function LeaderboardPreview({ game, records, email, loading, error, onRefresh, onSignIn, compact = false }) {
+  const latestUpdate = records.reduce((latest, record) => {
+    const updatedAt = Date.parse(record.updatedAt);
+    return Number.isFinite(updatedAt) && updatedAt > latest ? updatedAt : latest;
+  }, 0);
+
+  return (
+    <section className={`mini-game-preview${compact ? " is-compact" : ""}`} aria-label={`Leaderboard ${game.name}`}>
+      <header className="mini-game-preview-heading">
+        <h3><Icon name="crown" size={16} /> Leaderboard</h3>
+        <button type="button" className="mini-game-refresh" onClick={onRefresh} disabled={!email || loading} aria-label={`Muat ulang leaderboard ${game.name}`}>
+          <Icon name="reset" size={15} />
+        </button>
+      </header>
+      <p className="mini-game-preview-meta">
+        {latestUpdate ? `Diperbarui ${new Date(latestUpdate).toLocaleString("id-ID")}` : "Peringkat skor tertinggi"}
+      </p>
+      {!email ? (
+        <div className="mini-game-board-notice">
+          <p>Masuk dengan Google untuk melihat ranking terbaru.</p>
+          <button type="button" className="text-button" onClick={onSignIn}>Masuk dengan Google</button>
+        </div>
+      ) : loading && records.length === 0 ? (
+        <p className="mini-game-board-empty" role="status">Memuat ranking...</p>
+      ) : error ? (
+        <div>
+          <p className="mini-game-board-error" role="alert">{error}</p>
+          <button type="button" className="text-button" onClick={onSignIn}>Perbarui sesi Google</button>
+        </div>
+      ) : records.length ? (
+        <ol className="mini-game-rank-list">
+          {records.slice(0, compact ? 3 : 5).map((record, index) => (
+            <li key={record.email} className={record.email === email ? "is-current-user" : ""}>
+              <span className="mini-game-rank-number">
+                {index === 0 ? <><Icon name="crown" size={15} />1</> : index + 1}
+              </span>
+              <span className="mini-game-rank-name">
+                <strong>{record.username}</strong>
+                {record.email === email && <small>Anda</small>}
+              </span>
+              <span className="mini-game-rank-score">{record.score.toLocaleString("id-ID")}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mini-game-board-empty">{loading ? "Memperbarui ranking..." : "Belum ada skor. Jadilah yang pertama!"}</p>
+      )}
+    </section>
+  );
+}
+
 export default function MiniGamesPage() {
   const { data: session, error: authError } = useSession();
   const email = session?.user?.email?.trim().toLowerCase() || "";
@@ -48,6 +99,9 @@ export default function MiniGamesPage() {
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState("");
+  const [leaderboardsByGame, setLeaderboardsByGame] = useState({});
+  const [leaderboardLoadingByGame, setLeaderboardLoadingByGame] = useState({});
+  const [leaderboardErrorsByGame, setLeaderboardErrorsByGame] = useState({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -92,23 +146,63 @@ export default function MiniGamesPage() {
       return;
     }
 
-    setLeaderboardLoading(true);
-    setLeaderboardError("");
+    setLeaderboardLoadingByGame((current) => ({ ...current, [gameId]: true }));
+    setLeaderboardErrorsByGame((current) => ({ ...current, [gameId]: "" }));
+    if (gameId === activeGameIdRef.current) {
+      setLeaderboardLoading(true);
+      setLeaderboardError("");
+    }
     try {
       const records = await getMiniGameLeaderboard(gameId);
+      setLeaderboardsByGame((current) => ({ ...current, [gameId]: records }));
       if (gameId === activeGameIdRef.current) {
         setLeaderboard(records);
         setLeaderboardLoaded(true);
       }
     } catch (error) {
+      setLeaderboardErrorsByGame((current) => ({
+        ...current,
+        [gameId]: `${error.message || "Leaderboard gagal dimuat."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`,
+      }));
       if (gameId === activeGameIdRef.current) {
         setLeaderboardError(`${error.message || "Leaderboard gagal dimuat."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`);
         setLeaderboardLoaded(false);
       }
     } finally {
+      setLeaderboardLoadingByGame((current) => ({ ...current, [gameId]: false }));
       if (gameId === activeGameIdRef.current) setLeaderboardLoading(false);
     }
   }, [email]);
+
+  useEffect(() => {
+    if (!email) return undefined;
+    let active = true;
+    const refreshBoards = async () => {
+      try {
+        const status = await checkTokenStatus(60 * 1000);
+        if (!active) return;
+        if (!status.active) {
+          setLeaderboardErrorsByGame((current) => Object.fromEntries(
+            MINI_GAMES.map((game) => [game.id, status.message || "Sesi Google perlu disambungkan ulang untuk memuat leaderboard."])
+          ));
+          return;
+        }
+        await Promise.all(MINI_GAMES.map((game) => loadLeaderboard(game.id)));
+      } catch (error) {
+        if (!active) return;
+        const errorMessage = error.message || "Sesi Google tidak dapat diperiksa. Coba muat ulang leaderboard.";
+        setLeaderboardErrorsByGame((current) => Object.fromEntries(
+          MINI_GAMES.map((game) => [game.id, errorMessage])
+        ));
+      }
+    };
+    void refreshBoards();
+    const intervalId = window.setInterval(() => void refreshBoards(), 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [email, loadLeaderboard]);
 
   const persistScore = useCallback((scoreValue, game) => {
     if (!email || scoreValue < 1) return Promise.resolve(true);
@@ -124,13 +218,20 @@ export default function MiniGamesPage() {
           score: scoreValue,
         });
         if (result.record && activeGameIdRef.current === game.id) {
-          setLeaderboard((current) => sortedLeaderboard([
-            ...current.filter((record) => record.email !== email),
+          const updateRecords = (current) => sortedLeaderboard([
+            ...(current || []).filter((record) => record.email !== email),
             result.record,
-          ]));
+          ]);
+          setLeaderboard(updateRecords);
+          setLeaderboardsByGame((current) => ({
+            ...current,
+            [game.id]: updateRecords(current[game.id]),
+          }));
           setMessage({ type: "success", text: `High score baru ${scoreValue.toLocaleString("id-ID")} tersimpan.` });
         } else if (activeGameIdRef.current === game.id) {
-          setLeaderboard(await getMiniGameLeaderboard(game.id));
+          const records = await getMiniGameLeaderboard(game.id);
+          setLeaderboard(records);
+          setLeaderboardsByGame((current) => ({ ...current, [game.id]: records }));
         }
         return true;
       } catch (error) {
@@ -385,7 +486,7 @@ export default function MiniGamesPage() {
           <div className="page-content workspace-content mini-game-menu">
             <section className="page-intro mini-games-intro">
               <div>
-                <p className="page-eyebrow"><span />Waktu jeda</p>
+                <p className="page-eyebrow"><Icon name="crown" size={14} />Waktu jeda · Papan peringkat</p>
                 <h1>Pilih <em>game.</em></h1>
                 <p className="page-subtitle">Ambil jeda sejenak dengan game singkat yang menenangkan.</p>
               </div>
@@ -393,17 +494,27 @@ export default function MiniGamesPage() {
             {message && <ActionToast message={message} onClose={() => setMessage(null)} />}
             <div className="mini-game-picker" aria-label="Pilih mini game">
               {MINI_GAMES.map((game, index) => (
-                <button
+                <article
                   key={game.id}
-                  type="button"
                   className="mini-game-card"
-                  onClick={() => void enterGame(game)}
                 >
                   <span className="mini-game-card-number">0{index + 1} · MINI GAME</span>
                   <strong>{game.name}</strong>
                   <span>{game.description}</span>
-                  <span className="mini-game-launch"><Icon name="gamepad" size={16} /> Lihat menu game</span>
-                </button>
+                  <button type="button" className="mini-game-launch" onClick={() => void enterGame(game)}>
+                    <Icon name="gamepad" size={16} /> Mulai permainan
+                  </button>
+                  <LeaderboardPreview
+                    game={game}
+                    records={leaderboardsByGame[game.id] || []}
+                    email={email}
+                    loading={Boolean(leaderboardLoadingByGame[game.id])}
+                    error={leaderboardErrorsByGame[game.id] || ""}
+                    onRefresh={() => void loadLeaderboard(game.id)}
+                    onSignIn={() => void signIn("google")}
+                    compact
+                  />
+                </article>
               ))}
             </div>
           </div>
@@ -422,7 +533,7 @@ export default function MiniGamesPage() {
             <span className="arcade-start-eyebrow">MINI GAME</span>
             <h1>{activeGame.name}</h1>
             <p>{activeGame.description}</p>
-            {sessionCheck.status !== "idle" && (
+            {sessionCheck.status !== "idle" && sessionCheck.status !== "active" && (
               <div className={`arcade-auth-notice is-${sessionCheck.status}`} role={sessionCheck.status === "expired" || sessionCheck.status === "error" ? "alert" : "status"}>
                 <p>{authError || sessionCheck.message}</p>
                 {(sessionCheck.status === "signed-out" || sessionCheck.status === "expired") && (
@@ -511,6 +622,17 @@ export default function MiniGamesPage() {
                 </button>
               </div>
             )}
+          </div>
+          <div className="arcade-menu-leaderboard">
+            <LeaderboardPreview
+              game={activeGame}
+              records={leaderboardsByGame[activeGame.id] || []}
+              email={email}
+              loading={Boolean(leaderboardLoadingByGame[activeGame.id])}
+              error={leaderboardErrorsByGame[activeGame.id] || ""}
+              onRefresh={() => void loadLeaderboard(activeGame.id)}
+              onSignIn={() => void signIn("google")}
+            />
           </div>
         </section>
       ) : (

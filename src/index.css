@@ -4414,7 +4414,6 @@ button {
   background: #fff;
   color: var(--ink);
   text-align: left;
-  cursor: pointer;
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
@@ -4422,16 +4421,6 @@ button {
   transform: translateY(-2px);
   border-color: #9bb9a5;
   box-shadow: 0 8px 22px rgba(28, 45, 39, 0.08);
-}
-
-.mini-game-card:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.mini-game-card:disabled:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 .mini-game-card.is-active {
@@ -4452,7 +4441,7 @@ button {
   font-weight: 600;
 }
 
-.mini-game-card > span:last-child {
+.mini-game-card > span:not(.mini-game-card-number) {
   color: var(--muted);
   font-size: 11px;
 }
@@ -4741,6 +4730,71 @@ button {
   border-top: 1px solid #edf1ed;
 }
 
+.mini-game-preview {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e8eee8;
+  border-radius: 7px;
+  background: #fbfcfb;
+}
+
+.mini-game-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mini-game-preview-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--green-deep);
+  font-size: 12px;
+}
+
+.mini-game-preview-heading h3 svg,
+.mini-game-rank-number svg {
+  color: #b1842e;
+}
+
+.mini-game-preview-meta {
+  margin: 3px 0 8px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.mini-game-preview .mini-game-rank-list li {
+  min-height: 34px;
+}
+
+.mini-game-preview .mini-game-rank-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.mini-game-preview.is-compact {
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.mini-game-preview.is-compact .mini-game-rank-list li {
+  min-height: 31px;
+  padding: 4px 5px;
+}
+
+.mini-game-preview .mini-game-board-notice p {
+  font-size: 9px;
+}
+
+.mini-game-preview .mini-game-board-error,
+.mini-game-preview .mini-game-board-empty {
+  margin: 8px 0 2px;
+}
+
 @media (max-width: 900px) {
   .mini-game-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -4808,7 +4862,8 @@ button {
 }
 
 .mini-game-menu .mini-game-card {
-  min-height: 168px;
+  align-content: start;
+  min-height: 0;
   padding: 22px 24px;
 }
 
@@ -4820,10 +4875,75 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-top: 8px;
-  color: var(--green-deep) !important;
-  font-size: 11px !important;
+  width: fit-content;
+  min-height: 36px;
+  margin-top: 10px;
+  padding: 0 12px;
+  border: 1px solid #c8ded0;
+  border-radius: 6px;
+  background: #edf5ef;
+  color: var(--green-deep);
+  font-size: 11px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.mini-game-launch:hover {
+  transform: translateY(-1px);
+  border-color: var(--green);
+  background: #e0eee4;
+}
+
+.mini-game-launch:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.arcade-menu-leaderboard {
+  width: min(560px, calc(100% - 32px));
+  margin: 0 auto 18px;
+}
+
+.arcade-menu-leaderboard .mini-game-preview {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(18, 22, 36, 0.8);
+}
+
+.arcade-menu-leaderboard .mini-game-preview-heading h3,
+.arcade-menu-leaderboard .mini-game-rank-name strong,
+.arcade-menu-leaderboard .mini-game-rank-score {
+  color: #e5eeef;
+}
+
+.arcade-menu-leaderboard .mini-game-preview-meta,
+.arcade-menu-leaderboard .mini-game-board-empty,
+.arcade-menu-leaderboard .mini-game-board-notice,
+.arcade-menu-leaderboard .mini-game-board-error {
+  color: #aab5c2;
+}
+
+.arcade-menu-leaderboard .mini-game-refresh {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e5eeef;
+}
+
+.arcade-menu-leaderboard .mini-game-preview .mini-game-rank-list li {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.arcade-menu-leaderboard .mini-game-preview .mini-game-rank-list li.is-current-user {
+  border: 1px solid rgba(81, 242, 213, 0.36);
+  background: rgba(81, 242, 213, 0.12);
+}
+
+.arcade-menu-leaderboard .mini-game-preview .mini-game-rank-name small {
+  color: #51f2d5;
+}
+
+.arcade-menu-leaderboard .mini-game-preview .mini-game-rank-score {
+  color: #51f2d5;
 }
 
 .arcade-game-header {
@@ -4843,7 +4963,9 @@ button {
   display: grid;
   min-width: 0;
   min-height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: start;
+  overflow-y: auto;
   background:
     radial-gradient(ellipse at 50% 42%, rgba(32, 54, 72, 0.72), transparent 55%),
     #0b0c10;

@@ -43,9 +43,12 @@ npm run dev               # http://localhost:3000
 
 Lalu buka menu **Setup Google**, tempel link spreadsheet (dan folder Drive jika ingin mengunggah bukti gambar), tekan **Simpan setup**.
 
-Menu **Mini Game** memakai spreadsheet leaderboard bersama yang dikonfigurasi di `src/lib/miniGameScores.js`.
-Tab `MINI_GAME_HIGHSCORES` dibuat otomatis saat leaderboard dibuka. Bagikan spreadsheet tersebut dengan izin
-Editor kepada setiap akun Google yang boleh menyimpan skor; nama di ranking memakai bagian email sebelum `@`.
+Menu **Mini Game** menampilkan leaderboard tiap game pada pemilih game dan menu awal game, lengkap dengan
+peringkat teratas, ikon mahkota, waktu pembaruan, dan tombol muat ulang. Ranking diperbarui otomatis setiap
+menit selama halaman terbuka. Leaderboard memakai spreadsheet bersama yang dikonfigurasi di
+`src/lib/miniGameScores.js`; tab `MINI_GAME_HIGHSCORES` dibuat otomatis saat leaderboard dibuka. Bagikan
+spreadsheet tersebut dengan izin Editor kepada setiap akun Google yang boleh menyimpan skor; nama di ranking
+memakai bagian email sebelum `@`.
 
 ## 3. Deploy gratis
 
