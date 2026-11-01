@@ -4867,7 +4867,7 @@ button {
   padding: 22px 24px;
 }
 
-.mini-game-menu .mini-game-card strong {
+.mini-game-menu .mini-game-card > strong {
   font-size: 23px;
 }
 
