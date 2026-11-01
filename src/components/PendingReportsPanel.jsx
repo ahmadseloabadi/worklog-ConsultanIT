@@ -17,9 +17,11 @@ export default function PendingReportsPanel({
   loading,
   error,
   completingId,
+  deletingId,
   onEdit,
   onView,
   onComplete,
+  onDelete,
 }) {
   const pendingWorklogs = worklogs.filter((worklog) => !worklog.tglSelesai);
 
@@ -50,6 +52,7 @@ export default function PendingReportsPanel({
                   type="button"
                   className="page-button pending-edit-button"
                   onClick={() => onEdit(worklog)}
+                  disabled={Boolean(completingId || deletingId)}
                   aria-label={`Edit laporan ${worklog.aplikasi || "tanpa nama"}`}
                 >
                   <Icon name="edit" size={15} />
@@ -59,6 +62,7 @@ export default function PendingReportsPanel({
                   type="button"
                   className="page-button pending-view-button"
                   onClick={() => onView(worklog)}
+                  disabled={Boolean(completingId || deletingId)}
                   aria-label={`Lihat detail laporan ${worklog.aplikasi || "tanpa nama"}`}
                 >
                   <Icon name="eye" size={15} />
@@ -68,12 +72,22 @@ export default function PendingReportsPanel({
                   type="button"
                   className="submit-button pending-complete-button"
                   onClick={() => onComplete(worklog)}
-                  disabled={Boolean(completingId)}
+                  disabled={Boolean(completingId || deletingId)}
                   aria-busy={completingId === worklog.id}
                   aria-label={`${completingId === worklog.id ? "Menyimpan" : "Selesaikan"} laporan ${worklog.aplikasi || "tanpa nama"}`}
                 >
                   {completingId !== worklog.id && <Icon name="check" size={15} />}
                   {completingId === worklog.id ? "Menyimpan..." : "Selesaikan"}
+                </button>
+                <button
+                  type="button"
+                  className="page-button pending-delete-button"
+                  onClick={() => onDelete(worklog)}
+                  disabled={Boolean(completingId || deletingId)}
+                  aria-busy={deletingId === worklog.id}
+                  aria-label={`${deletingId === worklog.id ? "Menghapus" : "Hapus"} laporan ${worklog.aplikasi || "tanpa nama"}`}
+                >
+                  {deletingId === worklog.id ? "Menghapus..." : <><Icon name="trash" size={15} /><span>Hapus</span></>}
                 </button>
               </div>
             </li>

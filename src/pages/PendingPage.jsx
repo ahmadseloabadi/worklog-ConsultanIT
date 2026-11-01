@@ -42,6 +42,7 @@ export default function PendingPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState(null);
   const [completingId, setCompletingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [viewingWorklog, setViewingWorklog] = useState(null);
   const [editingWorklog, setEditingWorklog] = useState(null);
   const [editForm, setEditForm] = useState(emptyReportForm);
@@ -163,6 +164,40 @@ export default function PendingPage() {
     }
   }
 
+  async function handleDelete(worklog) {
+    if (!(await confirm({
+      title: "Hapus laporan?",
+      message: `Laporan “${worklog.aplikasi || "Tanpa nama"}” pada ${formatDate(worklog.tglMulai)} akan dihapus dari spreadsheet. Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: "Hapus laporan",
+      danger: true,
+    }))) return;
+
+    setDeletingId(worklog.id);
+    setMessage(null);
+    try {
+      const settings = readGoogleSettings(session?.user?.email);
+      const response = await apiFetch(`/api/log/${encodeURIComponent(worklog.id)}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expected: worklog, spreadsheetId: settings?.spreadsheetId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Laporan gagal dihapus.");
+      setWorklogs((current) => current.filter((item) => item.id !== worklog.id));
+      window.dispatchEvent(new Event("daily-worklog:counts-updated"));
+      if (editingWorklog?.id === worklog.id) closeEditor();
+      if (viewingWorklog?.id === worklog.id) setViewingWorklog(null);
+      setMessage({
+        type: "success",
+        text: `Laporan berhasil dihapus dari spreadsheet.${data.borderWarning ? ` ${data.borderWarning}` : ""}`,
+      });
+    } catch (deleteError) {
+      setMessage({ type: "error", text: deleteError.message || "Laporan gagal dihapus." });
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <main className="app-shell">
       <AppHeader />
@@ -186,9 +221,11 @@ export default function PendingPage() {
             loading={loading}
             error={error}
             completingId={completingId}
+            deletingId={deletingId}
             onEdit={handleEdit}
             onView={setViewingWorklog}
             onComplete={handleComplete}
+            onDelete={handleDelete}
           />
         </div>
       ) : (

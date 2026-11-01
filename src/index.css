@@ -4277,6 +4277,16 @@ button {
   background: #edf4ee;
 }
 
+.pending-report-actions .pending-delete-button {
+  border-color: #e7c9c4;
+  color: #a74435;
+}
+
+.pending-report-actions .pending-delete-button:hover:not(:disabled) {
+  border-color: #ca634f;
+  background: #fff1ee;
+}
+
 .pending-report-actions .submit-button {
   min-width: 122px;
   width: auto;
