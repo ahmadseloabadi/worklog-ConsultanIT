@@ -1088,6 +1088,19 @@ button {
   animation: action-dialog-enter 160ms ease-out;
 }
 
+.completion-date-dialog {
+  border: 0;
+  font: inherit;
+}
+
+.completion-date-field {
+  margin-top: 16px;
+}
+
+.completion-date-field .field-control {
+  margin-top: 6px;
+}
+
 .action-dialog-symbol {
   display: grid;
   width: 42px;

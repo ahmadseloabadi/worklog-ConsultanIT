@@ -42,6 +42,8 @@ export default function PendingPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState(null);
   const [completingId, setCompletingId] = useState(null);
+  const [completionWorklog, setCompletionWorklog] = useState(null);
+  const [completionDate, setCompletionDate] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [viewingWorklog, setViewingWorklog] = useState(null);
   const [editingWorklog, setEditingWorklog] = useState(null);
@@ -136,14 +138,24 @@ export default function PendingPage() {
     }
   }
 
-  async function handleComplete(worklog) {
-    const completedAt = todayAsInputValue();
-    if (!(await confirm({
-      title: "Selesaikan laporan tertunda?",
-      message: `Tanggal selesai laporan “${worklog.aplikasi || "Tanpa nama"}” akan diisi otomatis dengan hari ini (${formatDate(completedAt)}) dan langsung disimpan ke spreadsheet.`,
-      confirmLabel: "Ya, selesaikan",
-    }))) return;
+  function handleComplete(worklog) {
+    setCompletionWorklog(worklog);
+    setCompletionDate(todayAsInputValue());
+    setMessage(null);
+  }
 
+  function closeCompletionDialog() {
+    if (completingId) return;
+    setCompletionWorklog(null);
+    setCompletionDate("");
+  }
+
+  async function handleConfirmComplete(event) {
+    event.preventDefault();
+    if (!completionWorklog || !completionDate || completionDate < completionWorklog.tglMulai) return;
+
+    const worklog = completionWorklog;
+    const completedAt = completionDate;
     setCompletingId(worklog.id);
     setMessage({ type: "progress", text: "Menyimpan tanggal selesai ke spreadsheet..." });
     try {
@@ -157,8 +169,12 @@ export default function PendingPage() {
         type: "success",
         text: `Laporan berhasil diselesaikan dengan tanggal ${formatDate(completedAt)}.${result.borderWarning ? ` ${result.borderWarning}` : ""}`,
       });
+      setCompletionWorklog(null);
+      setCompletionDate("");
     } catch (completeError) {
       setMessage({ type: "error", text: completeError.message || "Laporan gagal diselesaikan." });
+      setCompletionWorklog(null);
+      setCompletionDate("");
     } finally {
       setCompletingId(null);
     }
@@ -244,6 +260,55 @@ export default function PendingPage() {
         </div>
       )}
       <ReportDetailDialog report={viewingWorklog} onClose={() => setViewingWorklog(null)} />
+      {completionWorklog && (
+        <div
+          className="action-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeCompletionDialog();
+          }}
+        >
+          <form
+            className="action-dialog completion-date-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="completion-date-title"
+            onSubmit={handleConfirmComplete}
+          >
+            <span className="action-dialog-symbol" aria-hidden="true">
+              <Icon name="check" size={21} />
+            </span>
+            <div className="action-dialog-copy">
+              <h2 id="completion-date-title">Selesaikan laporan tertunda?</h2>
+              <p>Pilih tanggal selesai untuk laporan “{completionWorklog.aplikasi || "Tanpa nama"}”. Tanggal otomatis diisi hari ini, tetapi dapat diubah.</p>
+              <label className="field completion-date-field">
+                <span className="field-label">Tanggal selesai</span>
+                <input
+                  className="field-control"
+                  type="date"
+                  value={completionDate}
+                  min={completionWorklog.tglMulai || undefined}
+                  onChange={(event) => setCompletionDate(event.target.value)}
+                  required
+                />
+              </label>
+              {completionDate && completionDate < completionWorklog.tglMulai && (
+                <p className="field-error" role="alert">Tanggal selesai tidak boleh lebih awal dari tanggal mulai.</p>
+              )}
+            </div>
+            <div className="action-dialog-actions">
+              <button type="button" className="action-dialog-cancel" onClick={closeCompletionDialog} disabled={Boolean(completingId)}>Batal</button>
+              <button
+                type="submit"
+                className="action-dialog-confirm"
+                disabled={!completionDate || completionDate < completionWorklog.tglMulai || Boolean(completingId)}
+                aria-busy={completingId === completionWorklog.id}
+              >
+                {completingId === completionWorklog.id ? "Menyimpan..." : "Ya, selesaikan"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       {editingWorklog && (
         <div className="report-editor-backdrop" onClick={closeEditor}>
           <section
