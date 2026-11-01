@@ -4895,6 +4895,47 @@ button {
   line-height: 1.6;
 }
 
+.arcade-auth-notice {
+  display: grid;
+  width: min(440px, 100%);
+  justify-items: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border: 1px solid rgba(81, 242, 213, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 245, 212, 0.06);
+}
+
+.arcade-auth-notice.is-expired,
+.arcade-auth-notice.is-error,
+.arcade-auth-notice.is-signed-out {
+  border-color: rgba(255, 180, 110, 0.35);
+  background: rgba(255, 150, 70, 0.08);
+}
+
+.arcade-auth-notice p {
+  margin: 0;
+  color: #c3d0d6;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.arcade-auth-notice button {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0f5f6;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.arcade-auth-notice button:hover {
+  border-color: #51f2d5;
+}
+
 .arcade-start-actions {
   display: grid;
   width: min(270px, 100%);

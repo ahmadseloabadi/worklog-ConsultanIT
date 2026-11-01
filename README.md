@@ -13,7 +13,7 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Dashboard, Kelola Laporan (edit, hapus, filter), dan "Cari & rapikan data serupa"
 - Tanggal pekerjaan otomatis mengikuti hari ini, dapat diubah, dan laporan tertunda dapat dipantau dari halaman catatan aktivitas
 - Navigasi sidebar responsif yang dapat diringkas, dengan menu Aktivitas terpisah untuk input dan tindak lanjut; badge jumlah draft dan laporan tertunda di-cache singkat agar perpindahan halaman tetap ringan
-- Mini Game dengan menu Start/Settings/Quit game, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred dan Bubble Wrap layar penuh, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard yang hanya menerima skor akhir Kompetitif
+- Mini Game dengan menu Start/Settings/Quit game, pemeriksaan dan penyegaran sesi Google sebelum Kompetitif, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred dan Bubble Wrap layar penuh, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard yang hanya menerima skor akhir Kompetitif
 - Upload bukti gambar ke Drive dan pratinjau di detail laporan
 - Setup Google per akun (link spreadsheet + folder Drive) dan pemeriksa token
 

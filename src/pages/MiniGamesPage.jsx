@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { signIn, useSession } from "@/lib/auth";
+import { checkTokenStatus, signIn, useSession } from "@/lib/auth";
 import { ActionToast } from "@/components/ActionFeedback";
 import AppHeader from "@/components/AppHeader";
 import Icon from "@/components/Icon";
@@ -32,7 +32,7 @@ function sortedLeaderboard(records) {
 }
 
 export default function MiniGamesPage() {
-  const { data: session } = useSession();
+  const { data: session, error: authError } = useSession();
   const email = session?.user?.email?.trim().toLowerCase() || "";
   const [activeGameId, setActiveGameId] = useState("");
   const [round, setRound] = useState(0);
@@ -41,6 +41,7 @@ export default function MiniGamesPage() {
   const [selectedMode, setSelectedMode] = useState("freeplay");
   const [effectsEnabled, setEffectsEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [sessionCheck, setSessionCheck] = useState({ status: "idle", message: "" });
   const [score, setScore] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(60);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -133,6 +134,11 @@ export default function MiniGamesPage() {
         }
         return true;
       } catch (error) {
+        if (error.status === 401) {
+          setSessionCheck({ status: "expired", message: "Sesi Google berakhir. Sambungkan ulang agar skor Kompetitif dapat disimpan." });
+          setMessage({ type: "error", text: "Sesi Google berakhir. Sambungkan ulang akun untuk menyimpan skor." });
+          return false;
+        }
         setMessage({ type: "error", text: `${error.message || "High score gagal disimpan."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.` });
         return false;
       } finally {
@@ -160,7 +166,7 @@ export default function MiniGamesPage() {
     setLeaderboard([]);
     setLeaderboardLoaded(false);
     setLeaderboardError("");
-    setLeaderboardLoading(Boolean(email));
+    setLeaderboardLoading(false);
     setScore(0);
     scoreRef.current = 0;
     window.clearTimeout(scoreUpdateTimeoutRef.current);
@@ -172,14 +178,41 @@ export default function MiniGamesPage() {
     setSettingsOpen(false);
     setShowLeaderboard(false);
     setActiveGameId(game.id);
-    if (email) void loadLeaderboard(game.id);
 
+    setSessionCheck(email
+      ? { status: "checking", message: "Memeriksa sesi Google..." }
+      : { status: "signed-out", message: "Masuk dengan Google untuk bermain Kompetitif dan menyimpan skor." });
+    const tokenCheck = email ? checkTokenStatus(5 * 60 * 1000) : null;
+    const fullscreenRequest = pageRef.current?.requestFullscreen && !document.fullscreenElement
+      ? pageRef.current.requestFullscreen()
+      : Promise.resolve();
     try {
-      if (pageRef.current?.requestFullscreen && !document.fullscreenElement) {
-        await pageRef.current.requestFullscreen();
-      }
+      await fullscreenRequest;
     } catch {
       // The fixed full-viewport game view remains available when native fullscreen is blocked.
+    }
+
+    if (!email) {
+      setSessionCheck({ status: "signed-out", message: "Masuk dengan Google untuk bermain Kompetitif dan menyimpan skor." });
+      return;
+    }
+
+    setSessionCheck({ status: "checking", message: "Memeriksa sesi Google..." });
+    try {
+      const result = await tokenCheck;
+      if (activeGameIdRef.current !== game.id) return;
+      if (result.active) {
+        setSessionCheck({ status: "active", message: "Sesi Google aktif. Skor Kompetitif siap disimpan." });
+        void loadLeaderboard(game.id);
+      } else {
+        setLeaderboardError(result.message);
+        setSessionCheck({ status: "expired", message: result.message });
+      }
+    } catch (error) {
+      if (activeGameIdRef.current !== game.id) return;
+      const checkMessage = error.message || "Sesi Google tidak dapat diperiksa. Periksa koneksi lalu coba lagi.";
+      setLeaderboardError(checkMessage);
+      setSessionCheck({ status: "error", message: checkMessage });
     }
   }
 
@@ -203,7 +236,7 @@ export default function MiniGamesPage() {
     lastScoreRenderRef.current = 0;
   }
 
-  function startGame() {
+  function beginGame() {
     finishingRef.current = false;
     scoreRef.current = 0;
     window.clearTimeout(scoreUpdateTimeoutRef.current);
@@ -214,6 +247,60 @@ export default function MiniGamesPage() {
     setMessage(null);
     setRound((value) => value + 1);
     setGamePhase("playing");
+  }
+
+  async function startGame() {
+    if (selectedMode === "competitive") {
+      if (!email) {
+        setSessionCheck({ status: "signed-out", message: "Masuk dengan Google sebelum memulai mode Kompetitif." });
+        return;
+      }
+
+      setSessionCheck({ status: "checking", message: "Memastikan sesi Google cukup lama untuk pertandingan..." });
+      try {
+        const result = await checkTokenStatus(5 * 60 * 1000);
+        if (!result.active) {
+          setSessionCheck({ status: "expired", message: result.message });
+          return;
+        }
+        setSessionCheck({ status: "active", message: "Sesi Google aktif. Pertandingan dimulai." });
+        if (!leaderboardLoaded) void loadLeaderboard(activeGame.id);
+      } catch (error) {
+        setSessionCheck({
+          status: "error",
+          message: error.message || "Sesi Google tidak dapat diperiksa. Periksa koneksi lalu coba lagi.",
+        });
+        return;
+      }
+    }
+
+    beginGame();
+  }
+
+  async function refreshGoogleSession() {
+    if (!activeGame || !email) return;
+    setSessionCheck({ status: "checking", message: "Memeriksa sesi Google..." });
+    try {
+      const result = await checkTokenStatus(5 * 60 * 1000);
+      if (result.active) {
+        setSessionCheck({ status: "active", message: "Sesi Google aktif. Skor Kompetitif siap disimpan." });
+        void loadLeaderboard(activeGame.id);
+      } else {
+        setSessionCheck({ status: "expired", message: result.message });
+      }
+    } catch (error) {
+      setSessionCheck({
+        status: "error",
+        message: error.message || "Sesi Google tidak dapat diperiksa. Periksa koneksi lalu coba lagi.",
+      });
+    }
+  }
+
+  async function reconnectGoogle() {
+    const connected = await signIn();
+    if (!connected) return;
+    if (email) await refreshGoogleSession();
+    else setSessionCheck({ status: "active", message: "Google tersambung. Mulai Kompetitif untuk memeriksa sesi sebelum bermain." });
   }
 
   const finishGame = useCallback(async () => {
@@ -335,6 +422,19 @@ export default function MiniGamesPage() {
             <span className="arcade-start-eyebrow">MINI GAME</span>
             <h1>{activeGame.name}</h1>
             <p>{activeGame.description}</p>
+            {sessionCheck.status !== "idle" && (
+              <div className={`arcade-auth-notice is-${sessionCheck.status}`} role={sessionCheck.status === "expired" || sessionCheck.status === "error" ? "alert" : "status"}>
+                <p>{authError || sessionCheck.message}</p>
+                {(sessionCheck.status === "signed-out" || sessionCheck.status === "expired") && (
+                  <button type="button" onClick={() => void reconnectGoogle()}>
+                    {email ? "Sambungkan ulang Google" : "Masuk dengan Google"}
+                  </button>
+                )}
+                {sessionCheck.status === "error" && email && (
+                  <button type="button" onClick={() => void refreshGoogleSession()}>Coba periksa lagi</button>
+                )}
+              </div>
+            )}
             {settingsOpen ? (
               <div className="arcade-settings">
                 <fieldset className="arcade-setting-group">
@@ -392,9 +492,14 @@ export default function MiniGamesPage() {
               </div>
             ) : (
               <div className="arcade-start-actions">
-                <button type="button" className="arcade-start-primary" onClick={startGame}>
+                <button
+                  type="button"
+                  className="arcade-start-primary"
+                  onClick={startGame}
+                  disabled={selectedMode === "competitive" && sessionCheck.status === "checking"}
+                >
                   <Icon name="gamepad" size={18} />
-                  Mulai
+                  {selectedMode === "competitive" && sessionCheck.status === "checking" ? "Memeriksa sesi..." : "Mulai"}
                 </button>
                 <button type="button" className="arcade-start-secondary" onClick={() => setSettingsOpen(true)}>
                   <Icon name="settings" size={17} />

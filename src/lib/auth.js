@@ -47,8 +47,8 @@ function authError(message, status = 401, code) {
 let tokenState = readJson(sessionStorage, TOKEN_KEY);
 if (tokenState && tokenState.expiresAt <= Date.now()) tokenState = null;
 
-export function hasValidToken() {
-  return Boolean(tokenState) && tokenState.expiresAt - Date.now() > 60_000;
+export function hasValidToken(minValidityMs = 60_000) {
+  return Boolean(tokenState) && tokenState.expiresAt - Date.now() > minValidityMs;
 }
 
 export function invalidateToken() {
@@ -179,9 +179,9 @@ async function fetchProfile(accessToken) {
 // ---------- API publik ----------
 let refreshing = null;
 
-/** Mengembalikan access token yang valid; memperbarui diam-diam bila sudah kedaluwarsa. */
-export function getAccessToken() {
-  if (hasValidToken()) return Promise.resolve(tokenState.token);
+/** Mengembalikan access token yang valid; memperbarui diam-diam bila akan segera kedaluwarsa. */
+export function getAccessToken(minValidityMs = 60_000) {
+  if (hasValidToken(minValidityMs)) return Promise.resolve(tokenState.token);
   const user = state.user;
   if (!user) return Promise.reject(authError("Belum masuk. Masuk dengan akun Google terlebih dahulu."));
 
@@ -229,9 +229,11 @@ export async function signIn() {
     };
     writeJson(localStorage, USER_KEY, user);
     setState({ user, tokenExpired: false, error: "" });
+    return true;
   } catch (error) {
     const dismissed = ["popup_closed", "access_denied"].includes(error.code);
     setState({ error: dismissed ? "Login Google dibatalkan." : error.message });
+    return false;
   }
 }
 
@@ -242,9 +244,9 @@ export function signOut() {
 }
 
 /** Cek token untuk tombol “Periksa token” di halaman Setup. */
-export async function checkTokenStatus() {
+export async function checkTokenStatus(minValidityMs = 60_000) {
   try {
-    const token = await getAccessToken();
+    const token = await getAccessToken(minValidityMs);
     await fetchProfile(token);
     return { active: true, message: "Token Google aktif dan dapat digunakan." };
   } catch (error) {
