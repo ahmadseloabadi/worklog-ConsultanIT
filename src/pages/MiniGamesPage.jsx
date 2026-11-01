@@ -486,7 +486,7 @@ export default function MiniGamesPage() {
           <div className="page-content workspace-content mini-game-menu">
             <section className="page-intro mini-games-intro">
               <div>
-                <p className="page-eyebrow"><Icon name="crown" size={14} />Waktu jeda · Papan peringkat</p>
+                <p className="page-eyebrow"><span />Waktu jeda</p>
                 <h1>Pilih <em>game.</em></h1>
                 <p className="page-subtitle">Ambil jeda sejenak dengan game singkat yang menenangkan.</p>
               </div>
