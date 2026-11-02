@@ -188,7 +188,7 @@ export default function MiniGamesPage() {
   const [sessionCheck, setSessionCheck] = useState({ status: "idle", message: "" });
   const [score, setScore] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(60);
-  const [leaderboardMode, setLeaderboardMode] = useState("competitive");
+  const [leaderboardModesByGame, setLeaderboardModesByGame] = useState({});
   const [leaderboardsByGame, setLeaderboardsByGame] = useState({});
   const [leaderboardLoadingByGame, setLeaderboardLoadingByGame] = useState({});
   const [leaderboardErrorsByGame, setLeaderboardErrorsByGame] = useState({});
@@ -206,6 +206,11 @@ export default function MiniGamesPage() {
   activeGameIdRef.current = activeGameId;
 
   const activeGame = MINI_GAMES.find((game) => game.id === activeGameId) || null;
+  const getLeaderboardMode = (gameId) => leaderboardModesByGame[gameId] || "competitive";
+  const setGameLeaderboardMode = (gameId, mode) => {
+    setLeaderboardModesByGame((current) => ({ ...current, [gameId]: mode }));
+  };
+  const activeLeaderboardMode = activeGame ? getLeaderboardMode(activeGame.id) : "competitive";
   const personalBest = activeGame
     ? (leaderboardsByGame[leaderboardKey(activeGame.id, selectedMode)] || []).find((record) => record.email === email)?.score || 0
     : 0;
@@ -645,7 +650,7 @@ export default function MiniGamesPage() {
     }
   }
 
-  const activeLeaderboardKey = activeGame ? leaderboardKey(activeGame.id, leaderboardMode) : "";
+  const activeLeaderboardKey = activeGame ? leaderboardKey(activeGame.id, activeLeaderboardMode) : "";
   const activeLeaderboard = activeLeaderboardKey ? (leaderboardsByGame[activeLeaderboardKey] || []) : [];
   const activeLeaderboardLoading = Boolean(leaderboardLoadingByGame[activeLeaderboardKey]);
   const activeLeaderboardError = leaderboardErrorsByGame[activeLeaderboardKey] || "";
@@ -680,12 +685,12 @@ export default function MiniGamesPage() {
                   </button>
                   <LeaderboardPreview
                     game={game}
-                    mode={leaderboardMode}
-                    onModeChange={setLeaderboardMode}
-                    records={leaderboardsByGame[leaderboardKey(game.id, leaderboardMode)] || []}
+                    mode={getLeaderboardMode(game.id)}
+                    onModeChange={(mode) => setGameLeaderboardMode(game.id, mode)}
+                    records={leaderboardsByGame[leaderboardKey(game.id, getLeaderboardMode(game.id))] || []}
                     email={email}
-                    loading={Boolean(leaderboardLoadingByGame[leaderboardKey(game.id, leaderboardMode)])}
-                    error={leaderboardErrorsByGame[leaderboardKey(game.id, leaderboardMode)] || ""}
+                    loading={Boolean(leaderboardLoadingByGame[leaderboardKey(game.id, getLeaderboardMode(game.id))])}
+                    error={leaderboardErrorsByGame[leaderboardKey(game.id, getLeaderboardMode(game.id))] || ""}
                     onRefresh={() => void loadLeaderboard(game.id)}
                     onSignIn={() => void signIn("google")}
                     compact
@@ -812,12 +817,12 @@ export default function MiniGamesPage() {
           <div className="arcade-menu-leaderboard">
             <LeaderboardPreview
               game={activeGame}
-              mode={leaderboardMode}
-              onModeChange={setLeaderboardMode}
-              records={leaderboardsByGame[leaderboardKey(activeGame.id, leaderboardMode)] || []}
+              mode={getLeaderboardMode(activeGame.id)}
+              onModeChange={(mode) => setGameLeaderboardMode(activeGame.id, mode)}
+              records={leaderboardsByGame[leaderboardKey(activeGame.id, getLeaderboardMode(activeGame.id))] || []}
               email={email}
-              loading={Boolean(leaderboardLoadingByGame[leaderboardKey(activeGame.id, leaderboardMode)])}
-              error={leaderboardErrorsByGame[leaderboardKey(activeGame.id, leaderboardMode)] || ""}
+              loading={Boolean(leaderboardLoadingByGame[leaderboardKey(activeGame.id, getLeaderboardMode(activeGame.id))])}
+              error={leaderboardErrorsByGame[leaderboardKey(activeGame.id, getLeaderboardMode(activeGame.id))] || ""}
               onRefresh={() => void loadLeaderboard(activeGame.id)}
               onSignIn={() => void signIn("google")}
             />
@@ -1018,7 +1023,7 @@ export default function MiniGamesPage() {
                   <span className="panel-eyebrow">Papan peringkat</span>
                   <h2 id="mini-game-leaderboard-title">{activeGame.name}</h2>
                 </div>
-                <button type="button" className="mini-game-refresh" onClick={() => void loadLeaderboard(activeGame.id)} disabled={!email || activeLeaderboardLoading} aria-label={`Muat ulang leaderboard ${leaderboardMode}`}>
+                <button type="button" className="mini-game-refresh" onClick={() => void loadLeaderboard(activeGame.id)} disabled={!email || activeLeaderboardLoading} aria-label={`Muat ulang leaderboard ${activeLeaderboardMode}`}>
                   <Icon name="reset" size={16} />
                 </button>
               </div>
@@ -1027,9 +1032,9 @@ export default function MiniGamesPage() {
                   <button
                     key={mode}
                     type="button"
-                    className={leaderboardMode === mode ? "is-selected" : ""}
-                    onClick={() => setLeaderboardMode(mode)}
-                    aria-pressed={leaderboardMode === mode}
+                    className={activeLeaderboardMode === mode ? "is-selected" : ""}
+                    onClick={() => setGameLeaderboardMode(activeGame.id, mode)}
+                    aria-pressed={activeLeaderboardMode === mode}
                   >
                     {mode === "freeplay" ? "Freeplay" : "Kompetitif"}
                   </button>
