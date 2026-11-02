@@ -372,6 +372,7 @@ export default function SnakeGame({
   useEffect(() => {
     pausedRef.current = paused;
     if (paused && runtimeRef.current) runtimeRef.current.boost = false;
+    if (!paused && runtimeRef.current) runtimeRef.current.started = true;
     window.cancelAnimationFrame(animationFrameRef.current);
     if (!paused) loopRef.current?.();
     return () => window.cancelAnimationFrame(animationFrameRef.current);
