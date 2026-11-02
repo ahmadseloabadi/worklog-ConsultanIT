@@ -63,7 +63,8 @@ export default function SatisfyingArcade({
     let previousPoint = null;
     let trail = [];
     let audioContext;
-    let shakeTime = 0;
+    let shakeDuration = 115;
+    let shakeUntil = 0;
     let shakeIntensity = 0;
     let palette = paletteRef.current;
     const targets = [];
@@ -74,7 +75,7 @@ export default function SatisfyingArcade({
 
     function resize() {
       const bounds = canvas.getBoundingClientRect();
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25);
       width = bounds.width;
       height = bounds.height;
       canvas.width = Math.round(width * pixelRatio);
@@ -151,9 +152,13 @@ export default function SatisfyingArcade({
       onScoreChange(score);
     }
 
-    function burst(x, y, color, count = 18, force = 8) {
+    function burst(x, y, color, count = 14, force = 8) {
       if (!effectsEnabledRef.current) return;
-      const shapes = ["circle", "rect", "shard"];
+      const shapes = ["circle", "shard"];
+      const particleLimit = 72;
+      if (particles.length + count > particleLimit) {
+        particles.splice(0, particles.length + count - particleLimit);
+      }
       for (let index = 0; index < count; index += 1) {
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * force + 1.5;
@@ -161,9 +166,9 @@ export default function SatisfyingArcade({
           x, y, color,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: Math.random() * 5 + 3,
+          size: Math.random() * 4 + 2.5,
           alpha: 1,
-          decay: Math.random() * 0.018 + 0.014,
+          decay: Math.random() * 0.024 + 0.02,
           rotation: Math.random() * Math.PI * 2,
           spin: (Math.random() - 0.5) * 0.2,
           shape: shapes[Math.floor(Math.random() * shapes.length)],
@@ -174,7 +179,18 @@ export default function SatisfyingArcade({
 
     function createRipple(x, y, color, intensity = 1) {
       if (!effectsEnabledRef.current) return;
+      if (ripples.length >= 16) ripples.shift();
       ripples.push({ x, y, color, radius: 5, maxRadius: (70 + Math.random() * 40) * intensity, alpha: 1, lineWidth: 6 });
+    }
+
+    function triggerShake(intensity, duration) {
+      if (!effectsEnabledRef.current) return;
+      const now = performance.now();
+      if (now >= shakeUntil || intensity >= shakeIntensity) {
+        shakeDuration = duration;
+      }
+      shakeIntensity = Math.max(shakeIntensity, intensity);
+      shakeUntil = Math.max(shakeUntil, now + duration);
     }
 
     function sliceTarget(target, start, end) {
@@ -199,13 +215,10 @@ export default function SatisfyingArcade({
         });
       }
       addScore(150);
-      if (effectsEnabledRef.current) {
-        shakeTime = 12;
-        shakeIntensity = 8;
-      }
+      triggerShake(2.4, 115);
       playSound("slice");
       createRipple(target.x, target.y, target.color);
-      burst(target.x, target.y, target.color, 25, 12);
+      burst(target.x, target.y, target.color, 14, 9);
     }
 
     function popBubble(bubble) {
@@ -216,11 +229,8 @@ export default function SatisfyingArcade({
       addScore(10);
       playSound("pop", 1 + bubble.y / Math.max(height, 1) * 0.5);
       createRipple(bubble.x, bubble.y, bubble.color, 0.72);
-      burst(bubble.x, bubble.y, bubble.color, 12, 5);
-      if (effectsEnabledRef.current) {
-        shakeTime = 4;
-        shakeIntensity = 1.8;
-      }
+      burst(bubble.x, bubble.y, bubble.color, 7, 4);
+      triggerShake(0.55, 55);
     }
 
     function popAt(x, y) {
@@ -290,7 +300,7 @@ export default function SatisfyingArcade({
       context.translate(target.x, target.y);
       context.rotate(target.rotation);
       context.shadowColor = target.color;
-      context.shadowBlur = effectsEnabledRef.current ? 20 : 0;
+      context.shadowBlur = effectsEnabledRef.current ? 12 : 0;
       context.fillStyle = target.color;
       context.strokeStyle = "#fff";
       context.lineWidth = 3;
@@ -310,7 +320,7 @@ export default function SatisfyingArcade({
       context.translate(piece.x, piece.y);
       context.rotate(piece.rotation);
       context.shadowColor = piece.color;
-      context.shadowBlur = effectsEnabledRef.current ? 12 : 0;
+      context.shadowBlur = effectsEnabledRef.current ? 7 : 0;
       context.fillStyle = piece.color;
       const clipBounds = piece.size * 1.5;
       context.beginPath();
@@ -342,7 +352,7 @@ export default function SatisfyingArcade({
         gradient.addColorStop(1, "#08090e");
         context.fillStyle = gradient;
         context.shadowColor = bubble.color;
-        context.shadowBlur = effectsEnabledRef.current ? 16 : 0;
+        context.shadowBlur = effectsEnabledRef.current ? 9 : 0;
         context.beginPath();
         context.arc(0, 0, radius, 0, Math.PI * 2);
         context.fill();
@@ -359,7 +369,7 @@ export default function SatisfyingArcade({
         context.strokeStyle = bubble.color;
         context.lineWidth = 3;
         context.shadowColor = bubble.color;
-        context.shadowBlur = effectsEnabledRef.current ? 12 : 0;
+        context.shadowBlur = effectsEnabledRef.current ? 7 : 0;
         context.beginPath();
         context.arc(0, 0, radius * (0.9 - progress * 0.2), 0, Math.PI * 2);
         context.stroke();
@@ -382,9 +392,15 @@ export default function SatisfyingArcade({
         });
       }
       context.save();
-      if (shakeTime > 0) {
-        context.translate((Math.random() - 0.5) * shakeIntensity, (Math.random() - 0.5) * shakeIntensity);
-        shakeTime -= 1;
+      if (now < shakeUntil) {
+        const progress = Math.max(0, Math.min(1, (shakeUntil - now) / shakeDuration));
+        const envelope = progress * progress;
+        context.translate(
+          Math.sin(now * 0.12) * shakeIntensity * envelope,
+          Math.cos(now * 0.15) * shakeIntensity * envelope
+        );
+      } else {
+        shakeIntensity = 0;
       }
       context.fillStyle = "rgba(11, 12, 16, 0.35)";
       context.fillRect(-20, -20, width + 40, height + 40);
@@ -425,7 +441,7 @@ export default function SatisfyingArcade({
         context.strokeStyle = ripple.color;
         context.lineWidth = ripple.lineWidth;
         context.shadowColor = ripple.color;
-        context.shadowBlur = effectsEnabledRef.current ? 15 : 0;
+        context.shadowBlur = 0;
         context.stroke();
         if (ripple.alpha <= 0) ripples.splice(index, 1);
       }
@@ -445,7 +461,7 @@ export default function SatisfyingArcade({
         context.rotate(particle.rotation);
         context.fillStyle = particle.color;
         context.shadowColor = particle.color;
-        context.shadowBlur = effectsEnabledRef.current ? 10 : 0;
+        context.shadowBlur = 0;
         if (particle.shape === "circle") {
           context.beginPath();
           context.arc(0, 0, particle.size, 0, Math.PI * 2);

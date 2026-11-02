@@ -572,7 +572,7 @@ export default function MiniGamesPage() {
                 <div className="arcade-setting-effects">
                   <div>
                     <strong>Efek visual</strong>
-                    <span>Partikel, kilau, dan getaran layar.</span>
+                    <span>Partikel ringan, kilau neon, dan getaran halus.</span>
                   </div>
                   <button
                     type="button"
@@ -724,7 +724,7 @@ export default function MiniGamesPage() {
                   <div className="arcade-setting-effects">
                     <div>
                       <strong>Efek visual</strong>
-                      <span>Partikel, kilau, dan getaran layar.</span>
+                      <span>Partikel ringan, kilau neon, dan getaran halus.</span>
                     </div>
                     <button
                       type="button"
