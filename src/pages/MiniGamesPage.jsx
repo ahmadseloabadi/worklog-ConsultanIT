@@ -5,7 +5,7 @@ import AppHeader from "@/components/AppHeader";
 import Icon from "@/components/Icon";
 import SatisfyingArcade from "@/components/SatisfyingArcade";
 import SnakeGame from "@/components/SnakeGame";
-import { getMiniGameLeaderboard, saveMiniGameHighScore } from "@/lib/miniGameScores";
+import { getMiniGameLeaderboards, saveMiniGameHighScore } from "@/lib/miniGameScores";
 
 const MINI_GAMES = [
   {
@@ -26,10 +26,21 @@ const MINI_GAMES = [
     id: "snake",
     mode: "snake",
     name: "Snake",
-    description: "Kumpulkan makanan, panjangkan ular, dan hindari dinding serta tubuh sendiri.",
-    instructions: "Gunakan tombol panah atau WASD. Di ponsel, gunakan tombol arah di bawah arena.",
+    description: "Kumpulkan makanan dan atur tantangan dengan pilihan kecepatan serta rintangan.",
+    instructions: "Panah/WASD untuk bergerak. Tahan Space/Shift untuk boost; layar sentuh punya kontrol arah dan boost.",
   },
 ];
+
+const SNAKE_SPEED_OPTIONS = [
+  { id: "slow", name: "Santai", details: "5 poin per makanan" },
+  { id: "normal", name: "Normal", details: "10 poin per makanan" },
+  { id: "fast", name: "Cepat", details: "15 poin per makanan" },
+];
+const GAME_MODES = ["freeplay", "competitive"];
+
+function leaderboardKey(gameId, mode) {
+  return `${gameId}:${mode}`;
+}
 
 function sortedLeaderboard(records) {
   return [...records].sort((left, right) =>
@@ -39,7 +50,65 @@ function sortedLeaderboard(records) {
   );
 }
 
-function LeaderboardPreview({ game, records, email, loading, error, onRefresh, onSignIn, compact = false }) {
+function SnakeSpeedSettings({ value, onChange }) {
+  return (
+    <fieldset className="arcade-setting-group snake-speed-settings">
+      <legend>Kecepatan Snake</legend>
+      {SNAKE_SPEED_OPTIONS.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          className={`arcade-mode-option${value === option.id ? " is-selected" : ""}`}
+          onClick={() => onChange(option.id)}
+          aria-pressed={value === option.id}
+        >
+          <strong>{option.name}</strong>
+          <span>{option.details}</span>
+        </button>
+      ))}
+      <p className="snake-speed-note">
+        Tepi arena tersambung di Freeplay; rintangan oranye tetap berbahaya. Tahan Space/Shift atau tombol Boost untuk mempercepat sementara.
+      </p>
+    </fieldset>
+  );
+}
+
+function SnakeObstacleSettings({ mode, value, onChange }) {
+  return (
+    <fieldset className="arcade-setting-group snake-speed-settings">
+      <legend>Rintangan</legend>
+      {mode === "competitive" ? (
+        <div className="snake-obstacle-status" role="status">
+          <strong>Selalu aktif · Kompetitif</strong>
+          <span>Rintangan acak berpola di empat area, dengan jalur terbuka di antaranya. Semua pemain mendapat pola yang sama setiap hari.</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`arcade-mode-option${value ? " is-selected" : ""}`}
+          onClick={() => onChange(!value)}
+          aria-pressed={value}
+        >
+          <strong>{value ? "Rintangan aktif" : "Tanpa rintangan"}</strong>
+          <span>{value ? "Pola rintangan acak tersusun di beberapa area." : "Arena bebas rintangan; tepi tetap tersambung."}</span>
+        </button>
+      )}
+    </fieldset>
+  );
+}
+
+function LeaderboardPreview({
+  game,
+  mode,
+  onModeChange,
+  records,
+  email,
+  loading,
+  error,
+  onRefresh,
+  onSignIn,
+  compact = false,
+}) {
   const latestUpdate = records.reduce((latest, record) => {
     const updatedAt = Date.parse(record.updatedAt);
     return Number.isFinite(updatedAt) && updatedAt > latest ? updatedAt : latest;
@@ -48,17 +117,30 @@ function LeaderboardPreview({ game, records, email, loading, error, onRefresh, o
   return (
     <section className={`mini-game-preview${compact ? " is-compact" : ""}`} aria-label={`Leaderboard ${game.name}`}>
       <header className="mini-game-preview-heading">
-        <h3><Icon name="crown" size={16} /> Leaderboard</h3>
-        <button type="button" className="mini-game-refresh" onClick={onRefresh} disabled={!email || loading} aria-label={`Muat ulang leaderboard ${game.name}`}>
+        <h3><Icon name="crown" size={16} /> {mode === "freeplay" ? "Freeplay" : "Kompetitif"}</h3>
+        <button type="button" className="mini-game-refresh" onClick={onRefresh} disabled={!email || loading} aria-label={`Muat ulang leaderboard ${game.name} ${mode}`}>
           <Icon name="reset" size={15} />
         </button>
       </header>
+      <div className="mini-game-board-modes" role="group" aria-label={`Mode leaderboard ${game.name}`}>
+        {GAME_MODES.map((boardMode) => (
+          <button
+            key={boardMode}
+            type="button"
+            className={mode === boardMode ? "is-selected" : ""}
+            onClick={() => onModeChange(boardMode)}
+            aria-pressed={mode === boardMode}
+          >
+            {boardMode === "freeplay" ? "Freeplay" : "Kompetitif"}
+          </button>
+        ))}
+      </div>
       <p className="mini-game-preview-meta">
-        {latestUpdate ? `Diperbarui ${new Date(latestUpdate).toLocaleString("id-ID")}` : "Peringkat skor tertinggi"}
+        {latestUpdate ? `Diperbarui ${new Date(latestUpdate).toLocaleString("id-ID")}` : "Skor tertinggi per akun"}
       </p>
       {!email ? (
         <div className="mini-game-board-notice">
-          <p>Masuk dengan Google untuk melihat ranking terbaru.</p>
+          <p>Masuk dengan Google untuk melihat dan menyimpan ranking.</p>
           <button type="button" className="text-button" onClick={onSignIn}>Masuk dengan Google</button>
         </div>
       ) : loading && records.length === 0 ? (
@@ -96,17 +178,17 @@ export default function MiniGamesPage() {
   const [activeGameId, setActiveGameId] = useState("");
   const [round, setRound] = useState(0);
   const [gamePhase, setGamePhase] = useState("ready");
+  const [countdownValue, setCountdownValue] = useState(3);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedMode, setSelectedMode] = useState("freeplay");
+  const [selectedSnakeSpeed, setSelectedSnakeSpeed] = useState("normal");
+  const [selectedSnakeObstacles, setSelectedSnakeObstacles] = useState(true);
   const [effectsEnabled, setEffectsEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sessionCheck, setSessionCheck] = useState({ status: "idle", message: "" });
   const [score, setScore] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(60);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
-  const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
-  const [leaderboardError, setLeaderboardError] = useState("");
+  const [leaderboardMode, setLeaderboardMode] = useState("competitive");
   const [leaderboardsByGame, setLeaderboardsByGame] = useState({});
   const [leaderboardLoadingByGame, setLeaderboardLoadingByGame] = useState({});
   const [leaderboardErrorsByGame, setLeaderboardErrorsByGame] = useState({});
@@ -124,7 +206,9 @@ export default function MiniGamesPage() {
   activeGameIdRef.current = activeGameId;
 
   const activeGame = MINI_GAMES.find((game) => game.id === activeGameId) || null;
-  const personalBest = leaderboard.find((record) => record.email === email)?.score || 0;
+  const personalBest = activeGame
+    ? (leaderboardsByGame[leaderboardKey(activeGame.id, selectedMode)] || []).find((record) => record.email === email)?.score || 0
+    : 0;
   useEffect(() => () => window.clearTimeout(scoreUpdateTimeoutRef.current), []);
 
   const updateGameScore = useCallback((nextScore) => {
@@ -146,39 +230,73 @@ export default function MiniGamesPage() {
   }, []);
 
   const loadLeaderboard = useCallback(async (gameId) => {
+    const keys = GAME_MODES.map((mode) => leaderboardKey(gameId, mode));
     if (!email) {
-      setLeaderboard([]);
-      setLeaderboardLoaded(false);
-      setLeaderboardError("");
-      setLeaderboardLoading(false);
       return;
     }
 
-    setLeaderboardLoadingByGame((current) => ({ ...current, [gameId]: true }));
-    setLeaderboardErrorsByGame((current) => ({ ...current, [gameId]: "" }));
-    if (gameId === activeGameIdRef.current) {
-      setLeaderboardLoading(true);
-      setLeaderboardError("");
-    }
+    setLeaderboardLoadingByGame((current) => ({
+      ...current,
+      ...Object.fromEntries(keys.map((key) => [key, true])),
+    }));
+    setLeaderboardErrorsByGame((current) => ({
+      ...current,
+      ...Object.fromEntries(keys.map((key) => [key, ""])),
+    }));
     try {
-      const records = await getMiniGameLeaderboard(gameId);
-      setLeaderboardsByGame((current) => ({ ...current, [gameId]: records }));
-      if (gameId === activeGameIdRef.current) {
-        setLeaderboard(records);
-        setLeaderboardLoaded(true);
-      }
+      const leaderboards = await getMiniGameLeaderboards([gameId]);
+      setLeaderboardsByGame((current) => ({
+        ...current,
+        ...Object.fromEntries(GAME_MODES.map((mode) => [
+          leaderboardKey(gameId, mode),
+          leaderboards[gameId][mode],
+        ])),
+      }));
     } catch (error) {
+      const errorMessage = `${error.message || "Leaderboard gagal dimuat."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`;
       setLeaderboardErrorsByGame((current) => ({
         ...current,
-        [gameId]: `${error.message || "Leaderboard gagal dimuat."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`,
+        ...Object.fromEntries(keys.map((key) => [key, errorMessage])),
       }));
-      if (gameId === activeGameIdRef.current) {
-        setLeaderboardError(`${error.message || "Leaderboard gagal dimuat."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`);
-        setLeaderboardLoaded(false);
-      }
     } finally {
-      setLeaderboardLoadingByGame((current) => ({ ...current, [gameId]: false }));
-      if (gameId === activeGameIdRef.current) setLeaderboardLoading(false);
+      setLeaderboardLoadingByGame((current) => ({
+        ...current,
+        ...Object.fromEntries(keys.map((key) => [key, false])),
+      }));
+    }
+  }, [email]);
+
+  const loadAllLeaderboards = useCallback(async () => {
+    if (!email) return;
+    const keys = MINI_GAMES.flatMap((game) => GAME_MODES.map((mode) => leaderboardKey(game.id, mode)));
+    setLeaderboardLoadingByGame((current) => ({
+      ...current,
+      ...Object.fromEntries(keys.map((key) => [key, true])),
+    }));
+    setLeaderboardErrorsByGame((current) => ({
+      ...current,
+      ...Object.fromEntries(keys.map((key) => [key, ""])),
+    }));
+    try {
+      const leaderboards = await getMiniGameLeaderboards(MINI_GAMES.map((game) => game.id));
+      setLeaderboardsByGame((current) => ({
+        ...current,
+        ...Object.fromEntries(MINI_GAMES.flatMap((game) => GAME_MODES.map((mode) => [
+          leaderboardKey(game.id, mode),
+          leaderboards[game.id][mode],
+        ]))),
+      }));
+    } catch (error) {
+      const errorMessage = `${error.message || "Leaderboard gagal dimuat."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`;
+      setLeaderboardErrorsByGame((current) => ({
+        ...current,
+        ...Object.fromEntries(keys.map((key) => [key, errorMessage])),
+      }));
+    } finally {
+      setLeaderboardLoadingByGame((current) => ({
+        ...current,
+        ...Object.fromEntries(keys.map((key) => [key, false])),
+      }));
     }
   }, [email]);
 
@@ -191,16 +309,19 @@ export default function MiniGamesPage() {
         if (!active) return;
         if (!status.active) {
           setLeaderboardErrorsByGame((current) => Object.fromEntries(
-            MINI_GAMES.map((game) => [game.id, status.message || "Sesi Google perlu disambungkan ulang untuk memuat leaderboard."])
+            MINI_GAMES.flatMap((game) => GAME_MODES.map((mode) => [
+              leaderboardKey(game.id, mode),
+              status.message || "Sesi Google perlu disambungkan ulang untuk memuat leaderboard.",
+            ]))
           ));
           return;
         }
-        await Promise.all(MINI_GAMES.map((game) => loadLeaderboard(game.id)));
+        await loadAllLeaderboards();
       } catch (error) {
         if (!active) return;
         const errorMessage = error.message || "Sesi Google tidak dapat diperiksa. Coba muat ulang leaderboard.";
         setLeaderboardErrorsByGame((current) => Object.fromEntries(
-          MINI_GAMES.map((game) => [game.id, errorMessage])
+          MINI_GAMES.flatMap((game) => GAME_MODES.map((mode) => [leaderboardKey(game.id, mode), errorMessage]))
         ));
       }
     };
@@ -210,10 +331,10 @@ export default function MiniGamesPage() {
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [email, loadLeaderboard]);
+  }, [email, loadAllLeaderboards]);
 
-  const persistScore = useCallback((scoreValue, game) => {
-    if (!email || scoreValue < 1) return Promise.resolve(true);
+  const persistScore = useCallback((scoreValue, game, mode) => {
+    if (!email || scoreValue < 1) return Promise.resolve({ saved: false, bestScore: 0 });
     if (savePromiseRef.current) return savePromiseRef.current;
 
     setSaving(true);
@@ -224,32 +345,29 @@ export default function MiniGamesPage() {
           game: game.name,
           email,
           score: scoreValue,
+          mode,
         });
-        if (result.record && activeGameIdRef.current === game.id) {
+        const key = leaderboardKey(game.id, mode);
+        if (result.record) {
           const updateRecords = (current) => sortedLeaderboard([
             ...(current || []).filter((record) => record.email !== email),
             result.record,
           ]);
-          setLeaderboard(updateRecords);
           setLeaderboardsByGame((current) => ({
             ...current,
-            [game.id]: updateRecords(current[game.id]),
+            [key]: updateRecords(current[key]),
           }));
-          setMessage({ type: "success", text: `High score baru ${scoreValue.toLocaleString("id-ID")} tersimpan.` });
-        } else if (activeGameIdRef.current === game.id) {
-          const records = await getMiniGameLeaderboard(game.id);
-          setLeaderboard(records);
-          setLeaderboardsByGame((current) => ({ ...current, [game.id]: records }));
         }
-        return true;
+        return result;
       } catch (error) {
         if (error.status === 401) {
-          setSessionCheck({ status: "expired", message: "Sesi Google berakhir. Sambungkan ulang agar skor Kompetitif dapat disimpan." });
-          setMessage({ type: "error", text: "Sesi Google berakhir. Sambungkan ulang akun untuk menyimpan skor." });
-          return false;
+          setSessionCheck({ status: "expired", message: "Sesi Google berakhir. Sambungkan ulang agar skor dapat disimpan." });
+          return { saved: false, error: "Sesi Google berakhir. Sambungkan ulang akun untuk menyimpan skor." };
         }
-        setMessage({ type: "error", text: `${error.message || "High score gagal disimpan."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.` });
-        return false;
+        return {
+          saved: false,
+          error: `${error.message || "High score gagal disimpan."} Pastikan spreadsheet dibagikan dengan izin Editor ke akun Google Anda.`,
+        };
       } finally {
         setSaving(false);
       }
@@ -272,10 +390,6 @@ export default function MiniGamesPage() {
 
   async function enterGame(game) {
     setMessage(null);
-    setLeaderboard([]);
-    setLeaderboardLoaded(false);
-    setLeaderboardError("");
-    setLeaderboardLoading(false);
     setScore(0);
     scoreRef.current = 0;
     window.clearTimeout(scoreUpdateTimeoutRef.current);
@@ -311,21 +425,28 @@ export default function MiniGamesPage() {
       const result = await tokenCheck;
       if (activeGameIdRef.current !== game.id) return;
       if (result.active) {
-        setSessionCheck({ status: "active", message: "Sesi Google aktif. Skor Kompetitif siap disimpan." });
+        setSessionCheck({ status: "active", message: "Sesi Google aktif. Skor dapat disimpan." });
         void loadLeaderboard(game.id);
       } else {
-        setLeaderboardError(result.message);
+        setLeaderboardErrorsByGame((current) => ({
+          ...current,
+          ...Object.fromEntries(GAME_MODES.map((mode) => [leaderboardKey(game.id, mode), result.message])),
+        }));
         setSessionCheck({ status: "expired", message: result.message });
       }
     } catch (error) {
       if (activeGameIdRef.current !== game.id) return;
       const checkMessage = error.message || "Sesi Google tidak dapat diperiksa. Periksa koneksi lalu coba lagi.";
-      setLeaderboardError(checkMessage);
+      setLeaderboardErrorsByGame((current) => ({
+        ...current,
+        ...Object.fromEntries(GAME_MODES.map((mode) => [leaderboardKey(game.id, mode), checkMessage])),
+      }));
       setSessionCheck({ status: "error", message: checkMessage });
     }
   }
 
   async function leaveGame() {
+    if (gamePhase === "playing" || gamePhase === "paused") await finishGame();
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen();
@@ -353,9 +474,10 @@ export default function MiniGamesPage() {
     lastScoreRenderRef.current = 0;
     setScore(0);
     setRemainingSeconds(60);
+    setCountdownValue(3);
     setMessage(null);
     setRound((value) => value + 1);
-    setGamePhase("playing");
+    setGamePhase("countdown");
   }
 
   async function startGame() {
@@ -373,7 +495,7 @@ export default function MiniGamesPage() {
           return;
         }
         setSessionCheck({ status: "active", message: "Sesi Google aktif. Pertandingan dimulai." });
-        if (!leaderboardLoaded) void loadLeaderboard(activeGame.id);
+        void loadLeaderboard(activeGame.id);
       } catch (error) {
         setSessionCheck({
           status: "error",
@@ -392,7 +514,7 @@ export default function MiniGamesPage() {
     try {
       const result = await checkTokenStatus(5 * 60 * 1000);
       if (result.active) {
-        setSessionCheck({ status: "active", message: "Sesi Google aktif. Skor Kompetitif siap disimpan." });
+        setSessionCheck({ status: "active", message: "Sesi Google aktif. Skor dapat disimpan." });
         void loadLeaderboard(activeGame.id);
       } else {
         setSessionCheck({ status: "expired", message: result.message });
@@ -421,10 +543,48 @@ export default function MiniGamesPage() {
     setScore(finalScore);
     setGamePhase("results");
     setShowLeaderboard(false);
-    if (selectedMode === "competitive" && email && finalScore > personalBest) {
-      await persistScore(finalScore, activeGame);
+    if (!email) {
+      setMessage({
+        type: "error",
+        text: finalScore > 0
+          ? "Sesi berakhir. Skor tidak tersimpan karena Anda belum masuk dengan Google."
+          : "Sesi berakhir tanpa skor untuk disimpan.",
+      });
+      return;
     }
-  }, [activeGame, email, persistScore, personalBest, selectedMode]);
+    if (finalScore < 1) {
+      setMessage({ type: "success", text: "Sesi berakhir tanpa skor untuk disimpan." });
+      return;
+    }
+
+    const result = await persistScore(finalScore, activeGame, selectedMode);
+    if (result.error) {
+      setMessage({ type: "error", text: `Skor sesi tidak tersimpan. ${result.error}` });
+    } else if (result.saved) {
+      setMessage({
+        type: "success",
+        text: `High score ${selectedMode === "freeplay" ? "Freeplay" : "Kompetitif"} baru (${finalScore.toLocaleString("id-ID")}) tersimpan.`,
+      });
+    } else {
+      setMessage({
+        type: "success",
+        text: `Sesi selesai. Skor tidak melampaui rekor ${selectedMode === "freeplay" ? "Freeplay" : "Kompetitif"} (${result.bestScore.toLocaleString("id-ID")}); tidak ada pembaruan.`,
+      });
+    }
+  }, [activeGame, email, persistScore, selectedMode]);
+
+  useEffect(() => {
+    if (gamePhase !== "countdown") return undefined;
+
+    const timer = window.setTimeout(() => {
+      if (countdownValue <= 1) {
+        setGamePhase("playing");
+      } else {
+        setCountdownValue((value) => value - 1);
+      }
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [countdownValue, gamePhase]);
 
   useEffect(() => {
     if (gamePhase !== "playing" || selectedMode !== "competitive") return undefined;
@@ -450,7 +610,8 @@ export default function MiniGamesPage() {
 
   function resumeGame() {
     setSettingsOpen(false);
-    setGamePhase("playing");
+    setCountdownValue(3);
+    setGamePhase("countdown");
   }
 
   async function returnToMenu() {
@@ -484,7 +645,12 @@ export default function MiniGamesPage() {
     }
   }
 
-  const topPlayers = leaderboard.slice(0, 10);
+  const activeLeaderboardKey = activeGame ? leaderboardKey(activeGame.id, leaderboardMode) : "";
+  const activeLeaderboard = activeLeaderboardKey ? (leaderboardsByGame[activeLeaderboardKey] || []) : [];
+  const activeLeaderboardLoading = Boolean(leaderboardLoadingByGame[activeLeaderboardKey]);
+  const activeLeaderboardError = leaderboardErrorsByGame[activeLeaderboardKey] || "";
+  const topPlayers = activeLeaderboard.slice(0, 10);
+  const selectedSnakeSpeedOption = SNAKE_SPEED_OPTIONS.find((option) => option.id === selectedSnakeSpeed);
 
   return (
     <main ref={pageRef} className={`mini-games-page${activeGame ? " is-playing" : ""}`}>
@@ -514,10 +680,12 @@ export default function MiniGamesPage() {
                   </button>
                   <LeaderboardPreview
                     game={game}
-                    records={leaderboardsByGame[game.id] || []}
+                    mode={leaderboardMode}
+                    onModeChange={setLeaderboardMode}
+                    records={leaderboardsByGame[leaderboardKey(game.id, leaderboardMode)] || []}
                     email={email}
-                    loading={Boolean(leaderboardLoadingByGame[game.id])}
-                    error={leaderboardErrorsByGame[game.id] || ""}
+                    loading={Boolean(leaderboardLoadingByGame[leaderboardKey(game.id, leaderboardMode)])}
+                    error={leaderboardErrorsByGame[leaderboardKey(game.id, leaderboardMode)] || ""}
                     onRefresh={() => void loadLeaderboard(game.id)}
                     onSignIn={() => void signIn("google")}
                     compact
@@ -565,7 +733,7 @@ export default function MiniGamesPage() {
                     aria-pressed={selectedMode === "freeplay"}
                   >
                     <strong>Freeplay</strong>
-                    <span>Bermain tanpa batas waktu. Skor tidak masuk leaderboard.</span>
+                    <span>Bermain tanpa batas waktu. Rekor Freeplay disimpan saat sesi berakhir.</span>
                   </button>
                   <button
                     type="button"
@@ -574,9 +742,19 @@ export default function MiniGamesPage() {
                     aria-pressed={selectedMode === "competitive"}
                   >
                     <strong>Kompetitif · 60 detik</strong>
-                    <span>Kejar skor tertinggi. Skor akhir dikirim ke leaderboard.</span>
+                    <span>Kejar skor tertinggi. Skor akhir disimpan ke leaderboard Kompetitif.</span>
                   </button>
                 </fieldset>
+                {activeGame.mode === "snake" && (
+                  <>
+                    <SnakeSpeedSettings value={selectedSnakeSpeed} onChange={setSelectedSnakeSpeed} />
+                    <SnakeObstacleSettings
+                      mode={selectedMode}
+                      value={selectedSnakeObstacles}
+                      onChange={setSelectedSnakeObstacles}
+                    />
+                  </>
+                )}
                 <div className="arcade-setting-effects">
                   <div>
                     <strong>Efek visual</strong>
@@ -634,10 +812,12 @@ export default function MiniGamesPage() {
           <div className="arcade-menu-leaderboard">
             <LeaderboardPreview
               game={activeGame}
-              records={leaderboardsByGame[activeGame.id] || []}
+              mode={leaderboardMode}
+              onModeChange={setLeaderboardMode}
+              records={leaderboardsByGame[leaderboardKey(activeGame.id, leaderboardMode)] || []}
               email={email}
-              loading={Boolean(leaderboardLoadingByGame[activeGame.id])}
-              error={leaderboardErrorsByGame[activeGame.id] || ""}
+              loading={Boolean(leaderboardLoadingByGame[leaderboardKey(activeGame.id, leaderboardMode)])}
+              error={leaderboardErrorsByGame[leaderboardKey(activeGame.id, leaderboardMode)] || ""}
               onRefresh={() => void loadLeaderboard(activeGame.id)}
               onSignIn={() => void signIn("google")}
             />
@@ -686,14 +866,17 @@ export default function MiniGamesPage() {
             </div>
           </header>
           <div className="arcade-game-stage">
-            {(gamePhase === "playing" || gamePhase === "paused") && (
+            {(gamePhase === "playing" || gamePhase === "paused" || gamePhase === "countdown") && (
               activeGame.mode === "snake" ? (
                 <SnakeGame
                   key={`${activeGame.id}-${round}`}
                   onScoreChange={updateGameScore}
                   onGameOver={() => void finishGame()}
                   effectsEnabled={effectsEnabled}
-                  paused={gamePhase === "paused"}
+                  paused={gamePhase !== "playing"}
+                  mode={selectedMode}
+                  speed={selectedSnakeSpeed}
+                  obstaclesEnabled={selectedSnakeObstacles}
                 />
               ) : (
                 <SatisfyingArcade
@@ -703,9 +886,17 @@ export default function MiniGamesPage() {
                   interactionDisabled={saving}
                   effectsEnabled={effectsEnabled}
                   soundEnabled={soundEnabled}
-                  paused={gamePhase === "paused"}
+                  paused={gamePhase !== "playing"}
                 />
               )
+            )}
+            {gamePhase === "countdown" && (
+              <div className="arcade-session-overlay arcade-countdown-overlay" aria-live="assertive" aria-atomic="true">
+                <section className="arcade-countdown" role="status" key={countdownValue}>
+                  <span>Bersiap</span>
+                  <strong>{countdownValue}</strong>
+                </section>
+              </div>
             )}
             {gamePhase === "paused" && !settingsOpen && (
               <div className="arcade-session-overlay">
@@ -739,6 +930,9 @@ export default function MiniGamesPage() {
                 <section className="arcade-session-dialog arcade-pause-settings" role="dialog" aria-modal="true" aria-labelledby="arcade-pause-settings-title">
                   <span className="arcade-start-eyebrow">PENGATURAN</span>
                   <h2 id="arcade-pause-settings-title">Settings</h2>
+                  {activeGame.mode === "snake" && (
+                    <SnakeSpeedSettings value={selectedSnakeSpeed} onChange={setSelectedSnakeSpeed} />
+                  )}
                   <div className="arcade-setting-effects">
                     <div>
                       <strong>Efek visual</strong>
@@ -780,9 +974,11 @@ export default function MiniGamesPage() {
                   <h2 id="arcade-result-title">{activeGame.name}</h2>
                   <p className="arcade-final-score">{score.toLocaleString("id-ID")}</p>
                   <p>
-                    {selectedMode === "competitive"
-                      ? (email ? (saving ? "Menyimpan skor akhir ke leaderboard..." : "Skor kompetitif Anda sudah dihitung.") : "Masuk dengan Google untuk menyimpan skor ke leaderboard.")
-                      : "Skor Freeplay hanya untuk sesi ini dan tidak masuk leaderboard."}
+                    {saving
+                      ? "Menyimpan skor akhir ke leaderboard..."
+                      : (email
+                        ? `Skor ${selectedMode === "freeplay" ? "Freeplay" : "Kompetitif"} telah difinalisasi.`
+                        : "Masuk dengan Google untuk menyimpan skor ke leaderboard.")}
                   </p>
                   <button type="button" className="arcade-start-primary" onClick={startGame}>
                     <Icon name="reset" size={17} />
@@ -804,11 +1000,15 @@ export default function MiniGamesPage() {
             )}
           </div>
           <footer className="arcade-game-footer">
-            <span>{activeGame.instructions}</span>
+            <span>
+              {activeGame.mode === "snake"
+                ? `${selectedSnakeSpeedOption.name} · ${selectedSnakeSpeedOption.details} | ${activeGame.instructions}`
+                : activeGame.instructions}
+            </span>
             <span>
               {selectedMode === "competitive"
                 ? (email ? `Rekor kompetitif ${personalBest.toLocaleString("id-ID")}` : "Masuk dengan Google untuk menyimpan high score.")
-                : "Freeplay tidak memengaruhi leaderboard."}
+                : (email ? "Rekor Freeplay diperbarui setelah sesi berakhir." : "Masuk dengan Google untuk menyimpan rekor Freeplay.")}
             </span>
           </footer>
           {showLeaderboard && (
@@ -818,19 +1018,32 @@ export default function MiniGamesPage() {
                   <span className="panel-eyebrow">Papan peringkat</span>
                   <h2 id="mini-game-leaderboard-title">{activeGame.name}</h2>
                 </div>
-                <button type="button" className="mini-game-refresh" onClick={() => void loadLeaderboard(activeGame.id)} disabled={!email || leaderboardLoading} aria-label="Muat ulang leaderboard">
+                <button type="button" className="mini-game-refresh" onClick={() => void loadLeaderboard(activeGame.id)} disabled={!email || activeLeaderboardLoading} aria-label={`Muat ulang leaderboard ${leaderboardMode}`}>
                   <Icon name="reset" size={16} />
                 </button>
+              </div>
+              <div className="mini-game-board-modes" role="group" aria-label="Mode leaderboard">
+                {GAME_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={leaderboardMode === mode ? "is-selected" : ""}
+                    onClick={() => setLeaderboardMode(mode)}
+                    aria-pressed={leaderboardMode === mode}
+                  >
+                    {mode === "freeplay" ? "Freeplay" : "Kompetitif"}
+                  </button>
+                ))}
               </div>
               {!email ? (
                 <div className="mini-game-board-notice">
                   <p>Masuk dengan akun Google untuk melihat dan menyimpan ranking.</p>
                   <button type="button" className="text-button" onClick={() => signIn("google")}>Masuk dengan Google</button>
                 </div>
-              ) : leaderboardLoading && !leaderboardLoaded ? (
+              ) : activeLeaderboardLoading && !leaderboardsByGame[activeLeaderboardKey] ? (
                 <p className="mini-game-board-empty" role="status">Memuat ranking...</p>
-              ) : leaderboardError ? (
-                <p className="mini-game-board-error" role="alert">{leaderboardError}</p>
+              ) : activeLeaderboardError ? (
+                <p className="mini-game-board-error" role="alert">{activeLeaderboardError}</p>
               ) : topPlayers.length ? (
                 <ol className="mini-game-rank-list">
                   {topPlayers.map((record, index) => (
@@ -845,9 +1058,9 @@ export default function MiniGamesPage() {
                   ))}
                 </ol>
               ) : (
-                <p className="mini-game-board-empty">{leaderboardLoaded ? "Belum ada skor. Jadilah yang pertama!" : "Leaderboard belum dimuat."}</p>
+                <p className="mini-game-board-empty">{activeLeaderboardLoading ? "Memperbarui ranking..." : "Belum ada skor. Jadilah yang pertama!"}</p>
               )}
-              {email && <p className="mini-game-sheet-note">Skor tertinggi per akun tersimpan di spreadsheet tim.</p>}
+              {email && <p className="mini-game-sheet-note">Skor tertinggi per akun dan mode tersimpan di spreadsheet tim.</p>}
             </aside>
           )}
           {message && <ActionToast message={message} onClose={() => setMessage(null)} />}

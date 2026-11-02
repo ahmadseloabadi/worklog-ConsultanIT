@@ -2,7 +2,8 @@ import { getSheetsClient } from "@/lib/googleClient";
 
 const SPREADSHEET_ID = "1cyQqEs3nS6WfprO9i-4qsPLV9-Fe_ZgyP38NaNWyK0Y";
 const SHEET_NAME = "MINI_GAME_HIGHSCORES";
-const HEADER = ["Game ID", "Game", "Username", "Google Account", "High Score", "Updated At"];
+const HEADER = ["Game ID", "Game", "Username", "Google Account", "High Score", "Updated At", "Mode"];
+const MODES = ["freeplay", "competitive"];
 
 async function ensureScoreSheet(sheets) {
   const getSheet = async () => {
@@ -27,18 +28,27 @@ async function ensureScoreSheet(sheets) {
 
   const headerResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!A1:F1`,
+    range: `'${SHEET_NAME}'!A1:G1`,
   });
   const currentHeader = headerResponse.data.values?.[0] || [];
   if (!currentHeader.length) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!A1:F1`,
+      range: `'${SHEET_NAME}'!A1:G1`,
       valueInputOption: "RAW",
       requestBody: { values: [HEADER] },
     });
-  } else if (HEADER.some((value, index) => currentHeader[index] !== value)) {
+  } else if (HEADER.slice(0, 6).some((value, index) => currentHeader[index] !== value)) {
     throw new Error(`Format tab ${SHEET_NAME} tidak sesuai. Periksa baris header sebelum menggunakan leaderboard.`);
+  } else if (!currentHeader[6]) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!G1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [[HEADER[6]]] },
+    });
+  } else if (currentHeader[6] !== HEADER[6]) {
+    throw new Error(`Format kolom Mode pada tab ${SHEET_NAME} tidak sesuai.`);
   }
 }
 
@@ -46,15 +56,18 @@ async function readScoreRows(sheets) {
   await ensureScoreSheet(sheets);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!A2:F`,
+    range: `'${SHEET_NAME}'!A2:G`,
   });
   return (response.data.values || []).flatMap((row, index) => {
-    const [gameId, game, username, email, rawScore, updatedAt] = row;
+    const [gameId, game, username, email, rawScore, updatedAt, rawMode] = row;
     const score = Number(rawScore);
     if (!gameId || !email || !Number.isSafeInteger(score) || score < 0) return [];
+    const mode = rawMode || "competitive";
+    if (!MODES.includes(mode)) return [];
     return [{
       gameId,
       game,
+      mode,
       username,
       email: email.toLowerCase(),
       score,
@@ -64,9 +77,9 @@ async function readScoreRows(sheets) {
   });
 }
 
-function bestScoresByPlayer(rows, gameId) {
+function bestScoresByPlayer(rows, gameId, mode) {
   const bestByEmail = new Map();
-  rows.filter((row) => row.gameId === gameId).forEach((row) => {
+  rows.filter((row) => row.gameId === gameId && row.mode === mode).forEach((row) => {
     const previous = bestByEmail.get(row.email);
     if (!previous || row.score > previous.score) bestByEmail.set(row.email, row);
   });
@@ -77,12 +90,22 @@ function bestScoresByPlayer(rows, gameId) {
   );
 }
 
-export async function getMiniGameLeaderboard(gameId) {
+export async function getMiniGameLeaderboards(gameIds) {
   const rows = await readScoreRows(getSheetsClient());
-  return bestScoresByPlayer(rows, gameId);
+  return Object.fromEntries(gameIds.map((gameId) => [
+    gameId,
+    Object.fromEntries(MODES.map((mode) => [mode, bestScoresByPlayer(rows, gameId, mode)])),
+  ]));
 }
 
-export async function saveMiniGameHighScore({ gameId, game, email, score }) {
+export async function getMiniGameLeaderboard(gameId, mode = "competitive") {
+  if (!MODES.includes(mode)) throw new Error("Mode leaderboard tidak valid.");
+  const leaderboards = await getMiniGameLeaderboards([gameId]);
+  return leaderboards[gameId][mode];
+}
+
+export async function saveMiniGameHighScore({ gameId, game, email, score, mode = "competitive" }) {
+  if (!MODES.includes(mode)) throw new Error("Mode permainan tidak valid.");
   const normalizedEmail = String(email || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     throw new Error("Akun Google tidak valid. Masuk kembali untuk menyimpan high score.");
@@ -94,7 +117,7 @@ export async function saveMiniGameHighScore({ gameId, game, email, score }) {
   const sheets = getSheetsClient();
   const rows = await readScoreRows(sheets);
   const playerRows = rows
-    .filter((row) => row.gameId === gameId && row.email === normalizedEmail)
+    .filter((row) => row.gameId === gameId && row.mode === mode && row.email === normalizedEmail)
     .sort((left, right) => right.score - left.score);
   const bestRow = playerRows[0];
   const previous = bestRow?.score || 0;
@@ -102,18 +125,18 @@ export async function saveMiniGameHighScore({ gameId, game, email, score }) {
 
   const username = normalizedEmail.split("@")[0];
   const updatedAt = new Date().toISOString();
-  const values = [[gameId, game, username, normalizedEmail, score, updatedAt]];
+  const values = [[gameId, game, username, normalizedEmail, score, updatedAt, mode]];
   if (bestRow) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!A${bestRow.rowNumber}:F${bestRow.rowNumber}`,
+      range: `'${SHEET_NAME}'!A${bestRow.rowNumber}:G${bestRow.rowNumber}`,
       valueInputOption: "RAW",
       requestBody: { values },
     });
   } else {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!A:F`,
+      range: `'${SHEET_NAME}'!A:G`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values },
@@ -122,6 +145,6 @@ export async function saveMiniGameHighScore({ gameId, game, email, score }) {
   return {
     saved: true,
     bestScore: score,
-    record: { gameId, game, username, email: normalizedEmail, score, updatedAt },
+    record: { gameId, game, mode, username, email: normalizedEmail, score, updatedAt },
   };
 }

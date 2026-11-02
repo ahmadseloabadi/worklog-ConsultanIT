@@ -4759,6 +4759,37 @@ button {
   color: #b1842e;
 }
 
+.mini-game-board-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin: 8px 0 5px;
+  padding: 3px;
+  border: 1px solid #e8eee8;
+  border-radius: 6px;
+  background: #f1f5f1;
+}
+
+.mini-game-board-modes button {
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #66746d;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mini-game-board-modes button.is-selected {
+  background: #fff;
+  color: var(--green-deep);
+  box-shadow: 0 1px 3px rgba(13, 35, 29, 0.12);
+}
+
 .mini-game-preview-meta {
   margin: 3px 0 8px;
   color: var(--muted);
@@ -4927,6 +4958,21 @@ button {
   border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.06);
   color: #e5eeef;
+}
+
+.arcade-menu-leaderboard .mini-game-board-modes {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.arcade-menu-leaderboard .mini-game-board-modes button {
+  color: #bac5d0;
+}
+
+.arcade-menu-leaderboard .mini-game-board-modes button.is-selected {
+  background: rgba(81, 242, 213, 0.16);
+  color: #51f2d5;
+  box-shadow: none;
 }
 
 .arcade-menu-leaderboard .mini-game-preview .mini-game-rank-list li {
@@ -5328,6 +5374,52 @@ button {
   backdrop-filter: blur(7px);
 }
 
+.arcade-countdown-overlay {
+  background: rgba(5, 8, 13, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.arcade-countdown {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: #fff;
+  text-align: center;
+}
+
+.arcade-countdown span {
+  color: #c3d0d6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.arcade-countdown strong {
+  color: #51f2d5;
+  font-size: clamp(88px, 20vw, 160px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(0, 245, 212, 0.42);
+  animation: arcade-countdown-pop 900ms ease-out both;
+}
+
+@keyframes arcade-countdown-pop {
+  0% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .arcade-session-dialog {
   display: grid;
   width: min(400px, 100%);
@@ -5421,6 +5513,54 @@ button {
 
 .snake-touch-controls {
   display: none;
+}
+
+.snake-speed-settings {
+  width: min(440px, 100%);
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(81, 242, 213, 0.18);
+  border-radius: 8px;
+}
+
+.snake-speed-settings legend {
+  padding: 0 6px;
+  color: #bffff2;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.snake-speed-settings .arcade-mode-option {
+  min-height: 48px;
+  padding: 8px 11px;
+}
+
+.snake-speed-note {
+  margin: 0;
+  color: #aab5c2;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.snake-obstacle-status {
+  display: grid;
+  gap: 5px;
+  padding: 11px 13px;
+  border: 1px solid rgba(81, 242, 213, 0.3);
+  border-radius: 7px;
+  background: rgba(0, 245, 212, 0.08);
+}
+
+.snake-obstacle-status strong {
+  color: #bffff2;
+  font-size: 11px;
+}
+
+.snake-obstacle-status span {
+  color: #aab5c2;
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .arcade-hint {
@@ -5581,6 +5721,22 @@ button {
 
   .snake-touch-controls button:active {
     background: rgba(81, 242, 213, 0.28);
+  }
+
+  .snake-touch-controls .snake-boost-button {
+    width: auto;
+    min-width: 128px;
+    height: 32px;
+    padding: 0 12px;
+    color: #ffcd89;
+    border-color: rgba(255, 159, 67, 0.4);
+    background: rgba(255, 159, 67, 0.12);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .snake-touch-controls .snake-boost-button:active {
+    background: rgba(255, 159, 67, 0.3);
   }
 
   .arcade-leaderboard {

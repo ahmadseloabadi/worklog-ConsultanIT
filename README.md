@@ -13,7 +13,7 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Dashboard, Kelola Laporan (edit, hapus, filter), dan "Cari & rapikan data serupa"
 - Tanggal pekerjaan otomatis mengikuti hari ini, dapat diubah, dan laporan tertunda dapat dipantau dari halaman catatan aktivitas
 - Navigasi sidebar responsif yang dapat diringkas, dengan menu Aktivitas terpisah untuk input dan tindak lanjut; badge jumlah draft dan laporan tertunda di-cache singkat agar perpindahan halaman tetap ringan
-- Mini Game dengan menu Start/Settings/Quit game, pemeriksaan dan penyegaran sesi Google sebelum Kompetitif, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred, Bubble Wrap, dan Snake layar penuh, kontrol keyboard dan sentuh untuk Snake, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard yang hanya menerima skor akhir Kompetitif
+- Mini Game dengan hitung mundur 3-2-1 sebelum permainan berjalan, menu Start/Settings/Quit game, pemeriksaan dan penyegaran sesi Google sebelum Kompetitif, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred, Bubble Wrap, dan Snake layar penuh, kontrol keyboard/sentuh dan boost Snake, pilihan kecepatan dengan nilai poin berbeda, opsi rintangan pada Freeplay, rintangan wajib dengan pola acak-terstruktur yang sama setiap hari pada Kompetitif, tepi arena yang dapat ditembus pada Freeplay tanpa garis kisi, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard terpisah untuk high score akhir Freeplay dan Kompetitif
 - Upload bukti gambar ke Drive dan pratinjau di detail laporan
 - Setup Google per akun (link spreadsheet + folder Drive) dan pemeriksa token
 
@@ -48,7 +48,10 @@ peringkat teratas, ikon mahkota, waktu pembaruan, dan tombol muat ulang. Ranking
 menit selama halaman terbuka. Leaderboard memakai spreadsheet bersama yang dikonfigurasi di
 `src/lib/miniGameScores.js`; tab `MINI_GAME_HIGHSCORES` dibuat otomatis saat leaderboard dibuka. Bagikan
 spreadsheet tersebut dengan izin Editor kepada setiap akun Google yang boleh menyimpan skor; nama di ranking
-memakai bagian email sebelum `@`.
+memakai bagian email sebelum `@`. Setiap game memiliki ranking Freeplay dan Kompetitif tersendiri. Skor sesi
+hanya dibandingkan dan disimpan sebagai high score setelah sesi berakhir (termasuk saat memilih Main menu atau
+Quit game), bukan pada setiap perubahan skor. Kolom `Mode` ditambahkan di kolom G; data lama tanpa mode tetap
+dihitung sebagai skor Kompetitif.
 
 ## 3. Deploy gratis
 
