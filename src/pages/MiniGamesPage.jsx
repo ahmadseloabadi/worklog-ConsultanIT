@@ -4,6 +4,7 @@ import { ActionToast } from "@/components/ActionFeedback";
 import AppHeader from "@/components/AppHeader";
 import Icon from "@/components/Icon";
 import SatisfyingArcade from "@/components/SatisfyingArcade";
+import SnakeGame from "@/components/SnakeGame";
 import { getMiniGameLeaderboard, saveMiniGameHighScore } from "@/lib/miniGameScores";
 
 const MINI_GAMES = [
@@ -20,6 +21,13 @@ const MINI_GAMES = [
     name: "Bubble Wrap",
     description: "Pecahkan gelembung untuk jeda yang menenangkan.",
     instructions: "Arahkan mouse ke gelembung tanpa klik, atau sentuh dan geser di layar.",
+  },
+  {
+    id: "snake",
+    mode: "snake",
+    name: "Snake",
+    description: "Kumpulkan makanan, panjangkan ular, dan hindari dinding serta tubuh sendiri.",
+    instructions: "Gunakan tombol panah atau WASD. Di ponsel, gunakan tombol arah di bawah arena.",
   },
 ];
 
@@ -679,15 +687,25 @@ export default function MiniGamesPage() {
           </header>
           <div className="arcade-game-stage">
             {(gamePhase === "playing" || gamePhase === "paused") && (
-              <SatisfyingArcade
-                key={`${activeGame.id}-${round}`}
-                mode={activeGame.mode}
-                onScoreChange={updateGameScore}
-                interactionDisabled={saving}
-                effectsEnabled={effectsEnabled}
-                soundEnabled={soundEnabled}
-                paused={gamePhase === "paused"}
-              />
+              activeGame.mode === "snake" ? (
+                <SnakeGame
+                  key={`${activeGame.id}-${round}`}
+                  onScoreChange={updateGameScore}
+                  onGameOver={() => void finishGame()}
+                  effectsEnabled={effectsEnabled}
+                  paused={gamePhase === "paused"}
+                />
+              ) : (
+                <SatisfyingArcade
+                  key={`${activeGame.id}-${round}`}
+                  mode={activeGame.mode}
+                  onScoreChange={updateGameScore}
+                  interactionDisabled={saving}
+                  effectsEnabled={effectsEnabled}
+                  soundEnabled={soundEnabled}
+                  paused={gamePhase === "paused"}
+                />
+              )
             )}
             {gamePhase === "paused" && !settingsOpen && (
               <div className="arcade-session-overlay">
