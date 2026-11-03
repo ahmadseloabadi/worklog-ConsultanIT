@@ -100,6 +100,29 @@ button {
   margin: 0 auto;
 }
 
+.site-footer {
+  width: min(1320px, calc(100% - 64px));
+  margin: 0 auto 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(28, 45, 39, 0.13);
+}
+
+.site-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+.site-footer-inner span:first-child {
+  color: var(--green-deep);
+  font-weight: 700;
+}
+
 .topbar {
   min-height: 82px;
   display: flex;
