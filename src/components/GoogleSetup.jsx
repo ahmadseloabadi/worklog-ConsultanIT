@@ -4,6 +4,7 @@ import { signIn, useSession } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { extractGoogleResourceId, readGoogleSettings, saveGoogleSettings } from "@/lib/googleSettings";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import { ActionToast } from "@/components/ActionFeedback";
 
 export default function GoogleSetup() {
@@ -195,6 +196,7 @@ export default function GoogleSetup() {
           </form>
         )}
       </div>
+      <AppFooter />
     </main>
   );
 }

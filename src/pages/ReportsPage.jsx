@@ -1,5 +1,6 @@
 import { signIn, useSession } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import ReportManager from "@/components/ReportManager";
 
 export default function ReportsPage() {
@@ -27,6 +28,7 @@ export default function ReportsPage() {
           </section>
         </div>
       )}
+      <AppFooter />
     </main>
   );
 }

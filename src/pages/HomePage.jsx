@@ -1,5 +1,6 @@
 import { useSession, signIn } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import LogForm from "@/components/LogForm";
 
 export default function HomePage() {
@@ -36,6 +37,7 @@ export default function HomePage() {
           </section>
         )}
       </div>
+      <AppFooter />
     </main>
   );
 }

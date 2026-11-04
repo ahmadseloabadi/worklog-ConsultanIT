@@ -5,6 +5,7 @@ import { readGoogleSettings } from "@/lib/googleSettings";
 import { completeWorklog } from "@/lib/worklogs";
 import { ActionToast, ConfirmationDialog, useConfirmation } from "@/components/ActionFeedback";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import Icon from "@/components/Icon";
 import PendingReportsPanel from "@/components/PendingReportsPanel";
 import ReportDetailDialog from "@/components/ReportDetailDialog";
@@ -388,6 +389,7 @@ export default function PendingPage() {
         onConfirm={acceptConfirmation}
         onCancel={cancelConfirmation}
       />
+      <AppFooter />
     </main>
   );
 }

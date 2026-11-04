@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { checkTokenStatus, signIn, useSession } from "@/lib/auth";
 import { ActionToast } from "@/components/ActionFeedback";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import Icon from "@/components/Icon";
 import SatisfyingArcade from "@/components/SatisfyingArcade";
 import SnakeGame from "@/components/SnakeGame";
@@ -699,6 +700,7 @@ export default function MiniGamesPage() {
               ))}
             </div>
           </div>
+          <AppFooter />
         </div>
       ) : gamePhase === "ready" ? (
         <section className="arcade-start-screen">

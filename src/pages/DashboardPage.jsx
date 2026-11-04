@@ -1,5 +1,6 @@
 import { signIn, useSession } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import Dashboard from "@/components/Dashboard";
 
 export default function DashboardPage() {
@@ -27,6 +28,7 @@ export default function DashboardPage() {
           </section>
         )}
       </div>
+      <AppFooter />
     </main>
   );
 }
