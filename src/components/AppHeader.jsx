@@ -186,7 +186,7 @@ export default function AppHeader() {
         <Link to="/dashboard" className="brand-link" aria-label="Daily Worklog beranda">
           <span className="brand-symbol" aria-hidden="true">W</span>
           <span className="brand-copy">
-            <span className="brand-overline">CONSULTANT · WORKLOG</span>
+            <span className="brand-overline">CONSULTANT IT · WORKLOG</span>
             <strong>Daily Worklog</strong>
           </span>
         </Link>
