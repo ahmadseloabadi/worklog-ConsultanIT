@@ -12,7 +12,7 @@ const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif
 
 const TOOLS = [
   { id: "merge", title: "Merge PDF", description: "Gabungkan beberapa PDF menjadi satu file.", icon: "mergePdf", accept: ".pdf,application/pdf", multiple: true },
-  { id: "split", title: "Split PDF", description: "Pilih halaman PDF yang ingin dipisahkan.", icon: "splitPdf", accept: ".pdf,application/pdf" },
+  { id: "split", title: "Split PDF", description: "Pilih, urutkan, dan putar halaman sebelum mengunduh PDF.", icon: "splitPdf", accept: ".pdf,application/pdf" },
   { id: "compress", title: "Compress PDF", description: "Perkecil ukuran dengan meraster halaman.", icon: "compressPdf", accept: ".pdf,application/pdf" },
   { id: "image", title: "Image to PDF", description: "Satukan gambar menjadi satu PDF.", icon: "imageFile", accept: "image/jpeg,image/png,image/webp,image/gif,image/bmp", multiple: true },
   { id: "pdf-to-word", title: "PDF to Word", description: "Ekstrak teks PDF ke dokumen Word.", icon: "pdfToWord", accept: ".pdf,application/pdf" },
@@ -52,23 +52,14 @@ function sanitizeOutputName(value) {
   return value.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/[. ]+$/g, "");
 }
 
-function parsePageRange(value, pageCount) {
-  const indexes = [];
-  for (const part of value.split(",")) {
-    const range = part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);
-    if (!range) throw new Error("Format halaman tidak valid. Gunakan contoh 1, 3-5.");
-    const start = Number(range[1]);
-    const end = Number(range[2] || range[1]);
-    if (start < 1 || end < start || end > pageCount) {
-      throw new Error(`Nomor halaman harus berada di antara 1 dan ${pageCount}.`);
-    }
-    for (let page = start; page <= end; page += 1) indexes.push(page - 1);
-  }
-  if (!indexes.length) throw new Error("Masukkan setidaknya satu halaman.");
-  return indexes;
-}
-
-function ReorderableList({ items, onReorder, renderItem, className = "", disabled = false }) {
+function ReorderableList({
+  items,
+  onReorder,
+  renderItem,
+  className = "",
+  disabled = false,
+  showOrderControls = true,
+}) {
   function moveItem(fromIndex, toIndex) {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || toIndex >= items.length) return;
     const reordered = [...items];
@@ -98,28 +89,30 @@ function ReorderableList({ items, onReorder, renderItem, className = "", disable
           }}
         >
           {renderItem(item, index)}
-          <div className="document-order-controls" aria-label={`Ubah urutan item ${index + 1}`}>
-            <button
-              type="button"
-              onClick={() => moveItem(index, index - 1)}
-              disabled={disabled || index === 0}
-              aria-label={`Pindahkan item ${index + 1} ke atas`}
-              title="Pindahkan ke atas"
-              data-tooltip="Pindahkan ke atas"
-            >
-              <Icon name="sortUp" size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => moveItem(index, index + 1)}
-              disabled={disabled || index === items.length - 1}
-              aria-label={`Pindahkan item ${index + 1} ke bawah`}
-              title="Pindahkan ke bawah"
-              data-tooltip="Pindahkan ke bawah"
-            >
-              <Icon name="sortDown" size={16} />
-            </button>
-          </div>
+          {showOrderControls && (
+            <div className="document-order-controls" aria-label={`Ubah urutan item ${index + 1}`}>
+              <button
+                type="button"
+                onClick={() => moveItem(index, index - 1)}
+                disabled={disabled || index === 0}
+                aria-label={`Pindahkan item ${index + 1} ke atas`}
+                title="Pindahkan ke atas"
+                data-tooltip="Pindahkan ke atas"
+              >
+                <Icon name="sortUp" size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveItem(index, index + 1)}
+                disabled={disabled || index === items.length - 1}
+                aria-label={`Pindahkan item ${index + 1} ke bawah`}
+                title="Pindahkan ke bawah"
+                data-tooltip="Pindahkan ke bawah"
+              >
+                <Icon name="sortDown" size={16} />
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -202,7 +195,10 @@ function DocumentToolsPage() {
   const [pdfFiles, setPdfFiles] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [activeFileId, setActiveFileId] = useState("");
-  const [pageRange, setPageRange] = useState("1");
+  const [splitPages, setSplitPages] = useState([]);
+  const [splitSourcePages, setSplitSourcePages] = useState([]);
+  const [splitLoading, setSplitLoading] = useState(false);
+  const [splitProgress, setSplitProgress] = useState({ current: 0, total: 0 });
   const [quality, setQuality] = useState(65);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -237,6 +233,87 @@ function DocumentToolsPage() {
   }, [preview?.url]);
 
   useEffect(() => {
+    if (activeTool !== "split" || !selectedFile) {
+      setSplitPages([]);
+      setSplitSourcePages([]);
+      setSplitLoading(false);
+      setSplitProgress({ current: 0, total: 0 });
+      return undefined;
+    }
+
+    let cancelled = false;
+    let loadingTask;
+    let pdfDocument;
+    const renderTasks = [];
+    setSplitPages([]);
+    setSplitSourcePages([]);
+    setSplitLoading(true);
+    setSplitProgress({ current: 0, total: 0 });
+
+    async function renderPageThumbnails() {
+      try {
+        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        if (cancelled) return;
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+        loadingTask = pdfjs.getDocument({ data: new Uint8Array(await selectedFile.arrayBuffer()) });
+        pdfDocument = await loadingTask.promise;
+        if (cancelled) return;
+        setSplitProgress({ current: 0, total: pdfDocument.numPages });
+
+        const renderedPages = [];
+        for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+          if (cancelled) return;
+          const page = await pdfDocument.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const viewport = page.getViewport({ scale: Math.min(1, 220 / baseViewport.width) });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
+          const context = canvas.getContext("2d", { alpha: false });
+          if (!context) throw new Error("Browser tidak dapat membuat pratinjau halaman PDF.");
+          const renderTask = page.render({ canvasContext: context, viewport, background: "#fff" });
+          renderTasks.push(renderTask);
+          await renderTask.promise;
+          if (cancelled) return;
+          const splitPage = {
+            id: `${Date.now()}-${Math.random()}-${pageNumber}`,
+            sourcePageIndex: pageNumber - 1,
+            pageNumber,
+            previewUrl: canvas.toDataURL("image/jpeg", 0.78),
+            rotation: 0,
+            selected: true,
+          };
+          renderedPages.push(splitPage);
+          setSplitPages((current) => [...current, splitPage]);
+          setSplitProgress({ current: pageNumber, total: pdfDocument.numPages });
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+        if (!cancelled) setSplitSourcePages(renderedPages);
+      } catch (renderError) {
+        if (!cancelled) {
+          console.error("Pratinjau halaman PDF gagal dibuat.", renderError);
+          setError("Halaman PDF tidak dapat ditampilkan. Pastikan file PDF valid dan coba lagi.");
+        }
+      } finally {
+        if (!cancelled) setSplitLoading(false);
+      }
+    }
+
+    void renderPageThumbnails();
+    return () => {
+      cancelled = true;
+      renderTasks.forEach((task) => task.cancel());
+      const destroyTask = pdfDocument?.destroy() || loadingTask?.destroy();
+      if (destroyTask) {
+        void destroyTask.catch((destroyError) => {
+          console.error("Dokumen PDF pratinjau gagal ditutup.", destroyError);
+        });
+      }
+    };
+  }, [activeTool, selectedFile]);
+
+  useEffect(() => {
     if (!TOOLS.some((tool) => tool.id === toolId)) {
       navigate("/document-tools/image", { replace: true });
       return;
@@ -247,6 +324,8 @@ function DocumentToolsPage() {
     setSelectedFiles([]);
     setActiveFileId("");
     setPdfFiles([]);
+    setSplitPages([]);
+    setSplitSourcePages([]);
     setError("");
     setNotice("");
     setOutput(null);
@@ -440,13 +519,81 @@ function DocumentToolsPage() {
     setOutput(null);
   }
 
+  function rotateSplitPage(id) {
+    setSplitPages((current) => current.map((page) =>
+      page.id === id ? { ...page, rotation: (page.rotation + 90) % 360 } : page
+    ));
+    setPreview((current) => current?.rotateTarget?.type === "split" && current.rotateTarget.id === id
+      ? { ...current, rotation: (current.rotation + 90) % 360 }
+      : current);
+    setOutput(null);
+  }
+
+  function duplicateSplitPage(page) {
+    setSplitPages((current) => {
+      const pagePosition = current.findIndex((item) => item.id === page.id);
+      if (pagePosition < 0) return current;
+      const duplicate = { ...page, id: `${Date.now()}-${Math.random()}` };
+      return [...current.slice(0, pagePosition + 1), duplicate, ...current.slice(pagePosition + 1)];
+    });
+    setOutput(null);
+  }
+
+  function removeSplitPage(id) {
+    if (preview?.rotateTarget?.type === "split" && preview.rotateTarget.id === id) closePreview();
+    setSplitPages((current) => current.filter((page) => page.id !== id));
+    setOutput(null);
+  }
+
+  function toggleSplitPage(id) {
+    setSplitPages((current) => current.map((page) =>
+      page.id === id ? { ...page, selected: !page.selected } : page
+    ));
+    setOutput(null);
+  }
+
+  function reorderSplitPages(reorderedPages) {
+    setSplitPages(reorderedPages);
+    setOutput(null);
+  }
+
+  function restoreSplitPages() {
+    setSplitPages(splitSourcePages.map((page) => ({
+      ...page,
+      id: `${Date.now()}-${Math.random()}-${page.pageNumber}`,
+      rotation: 0,
+      selected: true,
+    })));
+    setOutput(null);
+  }
+
+  function previewSplitPage(page) {
+    closePreview();
+    setPreview({
+      file: selectedFile,
+      url: page.previewUrl,
+      rotation: page.rotation,
+      rotateTarget: { type: "split", id: page.id, pageNumber: page.pageNumber },
+      pageImage: true,
+    });
+  }
+
   function rotatePreview() {
     if (!preview) return;
     const rotation = (preview.rotation + 90) % 360;
+    if (preview.rotateTarget?.type === "split") {
+      rotateSplitPage(preview.rotateTarget.id);
+      return;
+    }
     setPreview((current) => current ? { ...current, rotation } : current);
     if (preview.rotateTarget?.type === "image") rotateImage(preview.rotateTarget.id);
     if (preview.rotateTarget?.type === "pdf") rotatePdfFile(preview.rotateTarget.id);
     if (preview.rotateTarget?.type === "single") rotateSelectedFile(preview.rotateTarget.id);
+  }
+
+  function selectAllSplitPages(selected) {
+    setSplitPages((current) => current.map((page) => ({ ...page, selected })));
+    setOutput(null);
   }
 
   function handleSelectedFiles(selected) {
@@ -497,7 +644,6 @@ function DocumentToolsPage() {
     if (newFiles.length) {
       setSelectedFiles((current) => [...current, ...newFiles]);
       setActiveFileId((current) => current || newFiles[0].id);
-      if (activeTool === "split") setPageRange("1");
     }
   }
 
@@ -590,15 +736,17 @@ function DocumentToolsPage() {
 
   async function splitPdf() {
     if (!selectedFile) throw new Error("Pilih file PDF terlebih dahulu.");
+    const pagesToSplit = splitPages.filter((page) => page.selected);
+    if (!pagesToSplit.length) throw new Error("Pilih setidaknya satu halaman untuk diunduh.");
+    if (splitLoading) throw new Error("Tunggu sampai pratinjau semua halaman selesai dimuat.");
     const { PDFDocument, degrees } = await import("pdf-lib");
     const source = await PDFDocument.load(await selectedFile.arrayBuffer());
-    const indexes = parsePageRange(pageRange, source.getPageCount());
     const result = await PDFDocument.create();
-    const pages = await result.copyPages(source, indexes);
-    pages.forEach((page) => {
-      if (activeFile.rotation) page.setRotation(degrees((page.getRotation().angle + activeFile.rotation) % 360));
+    for (const splitPage of pagesToSplit) {
+      const [page] = await result.copyPages(source, [splitPage.sourcePageIndex]);
+      if (splitPage.rotation) page.setRotation(degrees((page.getRotation().angle + splitPage.rotation) % 360));
       result.addPage(page);
-    });
+    }
     const bytes = await result.save({ useObjectStreams: true });
     return saveBlob(new Blob([bytes], { type: "application/pdf" }), `${getBaseName(selectedFile.name)}-halaman.pdf`);
   }
@@ -910,7 +1058,151 @@ function DocumentToolsPage() {
                   </div>
                 )
               ) : documentDropZone}
-              {activeTool !== "merge" && selectedFiles.length > 0 && (
+              {activeTool === "split" ? (
+                <div className="document-file-board document-split-board">
+                  <div className="document-file-list-heading">
+                    <strong>{selectedFiles.length ? "File PDF" : "Belum ada file PDF"}</strong>
+                    <span className="document-order-hint">Unggah satu atau beberapa PDF, lalu pilih file untuk mengatur halamannya.</span>
+                  </div>
+                  {selectedFiles.length > 0 && (
+                    <div className="document-split-sources">
+                      {selectedFiles.map((item, index) => (
+                        <div
+                          className={`document-split-source${activeFileId === item.id ? " is-active" : ""}`}
+                          key={item.id}
+                        >
+                          <button
+                            type="button"
+                            className="document-split-source-select"
+                            onClick={() => setActiveFileId(item.id)}
+                            disabled={busy || splitLoading}
+                            aria-pressed={activeFileId === item.id}
+                            title={`Tampilkan halaman dari ${item.file.name}`}
+                          >
+                            <Icon name="documents" size={17} />
+                            <span title={item.file.name}>{item.file.name}</span>
+                            <small>{index + 1}</small>
+                          </button>
+                          <button
+                            type="button"
+                            className="document-split-source-remove"
+                            onClick={() => removeSelectedFileById(item.id)}
+                            disabled={busy}
+                            aria-label={`Hapus ${item.file.name}`}
+                            title="Hapus file PDF"
+                          >
+                            <Icon name="trash" size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {selectedFile && (
+                    <>
+                      <div className="document-file-list-heading document-split-pages-heading">
+                        <strong>
+                          {splitLoading
+                            ? `Memuat halaman ${splitProgress.current} dari ${splitProgress.total || "..."}`
+                            : `${splitPages.filter((page) => page.selected).length} dari ${splitPages.length} halaman dipilih`}
+                        </strong>
+                        <span className="document-order-hint">
+                          Seret kartu untuk mengubah urutan halaman dalam hasil PDF.
+                        </span>
+                        <div className="document-split-page-controls">
+                          <button type="button" onClick={() => selectAllSplitPages(true)} disabled={busy || splitLoading || !splitPages.length}>
+                            Pilih semua
+                          </button>
+                          <button type="button" onClick={() => selectAllSplitPages(false)} disabled={busy || splitLoading || !splitPages.length}>
+                            Hapus pilihan
+                          </button>
+                          <button type="button" onClick={restoreSplitPages} disabled={busy || splitLoading || !splitSourcePages.length}>
+                            Pulihkan halaman
+                          </button>
+                        </div>
+                      </div>
+                      {splitLoading && (
+                        <div className="document-split-loading" role="status">
+                          <span className="document-split-loading-spinner" />
+                          <span>Membuat pratinjau halaman PDF...</span>
+                        </div>
+                      )}
+                      {splitPages.length > 0 && (
+                        <ReorderableList
+                          className="document-split-page-grid"
+                          items={splitPages}
+                          onReorder={reorderSplitPages}
+                          disabled={busy || splitLoading}
+                          showOrderControls={false}
+                          renderItem={(page) => (
+                            <article className={`document-split-page-card${page.selected ? "" : " is-excluded"}`}>
+                              <div className="document-split-page-preview">
+                                <img
+                                  src={page.previewUrl}
+                                  alt={`Pratinjau halaman ${page.pageNumber}`}
+                                  style={{ transform: `rotate(${page.rotation}deg)` }}
+                                />
+                                <div className="document-image-actions">
+                                  <button
+                                    type="button"
+                                    onClick={() => previewSplitPage(page)}
+                                    disabled={busy}
+                                    aria-label={`Pratinjau halaman ${page.pageNumber}`}
+                                    title="Lihat halaman"
+                                    data-tooltip="Lihat halaman"
+                                  >
+                                    <Icon name="eye" size={15} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => rotateSplitPage(page.id)}
+                                    disabled={busy}
+                                    aria-label={`Putar halaman ${page.pageNumber}`}
+                                    title="Putar 90° searah jarum jam"
+                                    data-tooltip="Putar 90°"
+                                  >
+                                    <Icon name="rotate" size={15} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => duplicateSplitPage(page)}
+                                    disabled={busy || splitLoading}
+                                    aria-label={`Duplikat halaman ${page.pageNumber}`}
+                                    title="Buat salinan halaman"
+                                    data-tooltip="Duplikat halaman"
+                                  >
+                                    <Icon name="duplicate" size={15} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSplitPage(page.id)}
+                                    disabled={busy}
+                                    aria-label={`Hapus halaman ${page.pageNumber}`}
+                                    title="Hapus halaman dari daftar"
+                                    data-tooltip="Hapus halaman"
+                                  >
+                                    <Icon name="trash" size={15} />
+                                  </button>
+                                </div>
+                              </div>
+                              <label className="document-split-page-meta">
+                                <input
+                                  type="checkbox"
+                                  checked={page.selected}
+                                  onChange={() => toggleSplitPage(page.id)}
+                                  disabled={busy}
+                                  aria-label={`Sertakan halaman ${page.pageNumber}`}
+                                />
+                                <span>Halaman {page.pageNumber}</span>
+                                {page.rotation !== 0 && <small>{page.rotation}°</small>}
+                              </label>
+                            </article>
+                          )}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : activeTool !== "merge" && selectedFiles.length > 0 && (
                 <div className="document-file-board">
                   <div className="document-file-list-heading">
                     <strong>{selectedFiles.length} file dipilih</strong>
@@ -989,12 +1281,6 @@ function DocumentToolsPage() {
                   )}
                 </div>
               )}
-              {activeTool === "split" && selectedFile && (
-                <label className="document-option-field">
-                  <span>Halaman yang akan disimpan</span>
-                  <input value={pageRange} onChange={(event) => setPageRange(event.target.value)} placeholder="Contoh: 1, 3-5" disabled={busy} />
-                </label>
-              )}
               {activeTool === "compress" && selectedFile && (
                 <label className="document-option-field document-quality-field">
                   <span>Kualitas gambar: {quality}%</span>
@@ -1042,7 +1328,15 @@ function DocumentToolsPage() {
               className="document-process-button"
               onClick={runCurrentTool}
               aria-busy={busy}
-              disabled={busy || (activeTool === "image" ? images.length === 0 : activeTool === "merge" ? pdfFiles.length < 2 : !selectedFile)}
+              disabled={busy || (
+                activeTool === "image"
+                  ? images.length === 0
+                  : activeTool === "merge"
+                    ? pdfFiles.length < 2
+                    : activeTool === "split"
+                      ? !selectedFile || splitLoading || !splitPages.some((page) => page.selected)
+                      : !selectedFile
+              )}
             >
               {busy ? "Memproses..." : currentTool.title}
             </button>
@@ -1074,6 +1368,15 @@ function DocumentToolsPage() {
                 <p className="document-preview-state" role="status">Memuat pratinjau dokumen...</p>
               ) : preview.error ? (
                 <p className="document-preview-state is-error" role="alert">{preview.error}</p>
+              ) : preview.pageImage ? (
+                <div className="document-preview-image-wrap">
+                  <img
+                    className="document-preview-image"
+                    src={preview.url}
+                    alt={`Pratinjau halaman PDF ${preview.rotateTarget?.pageNumber || ""}`}
+                    style={{ transform: `rotate(${preview.rotation}deg)` }}
+                  />
+                </div>
               ) : isPdf(preview.file) ? (
                 <iframe
                   className="document-preview-pdf"

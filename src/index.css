@@ -7536,6 +7536,223 @@ button[aria-busy="true"]::before {
   display: contents;
 }
 
+.document-split-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.document-split-source {
+  display: flex;
+  max-width: min(100%, 360px);
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #dce4de;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.document-split-source.is-active {
+  border-color: #9db9a5;
+  background: #edf4ed;
+  box-shadow: inset 0 0 0 1px #9db9a5;
+}
+
+.document-split-source-select {
+  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: #456052;
+  cursor: pointer;
+}
+
+.document-split-source-select > span {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-split-source-select small {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8f0e9;
+  color: var(--green-deep);
+  font-size: 9px;
+}
+
+.document-split-source-remove {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid #e1e8e2;
+  background: transparent;
+  color: #a33f32;
+  cursor: pointer;
+}
+
+.document-split-source-remove:hover {
+  background: #fff1ef;
+}
+
+.document-split-pages-heading {
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 15px;
+  border-top: 1px solid #e1e8e2;
+}
+
+.document-split-page-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.document-split-page-controls button {
+  min-height: 29px;
+  padding: 4px 9px;
+  border: 1px solid #dce4de;
+  border-radius: 5px;
+  background: #fff;
+  color: #456052;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.document-split-page-controls button:hover:not(:disabled) {
+  border-color: #9db9a5;
+  background: #edf4ed;
+}
+
+.document-split-page-controls button:disabled,
+.document-split-source-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.document-split-loading {
+  display: flex;
+  min-height: 140px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.document-split-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #dce8df;
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: document-split-spin 750ms linear infinite;
+}
+
+.document-split-page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  align-items: stretch;
+  gap: 13px;
+}
+
+.document-split-page-grid > .document-sortable-item {
+  overflow: visible;
+  border: 1px solid #e1e8e2;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(28, 45, 39, 0.05);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease, opacity 140ms ease;
+}
+
+.document-split-page-grid > .document-sortable-item:hover {
+  border-color: #9db9a5;
+  box-shadow: 0 8px 20px rgba(28, 45, 39, 0.09);
+  transform: translateY(-2px);
+}
+
+.document-split-page-grid > .document-sortable-item[draggable="true"] {
+  cursor: grab;
+}
+
+.document-split-page-grid > .document-sortable-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.document-split-page-card {
+  min-width: 0;
+  overflow: visible;
+  border-radius: inherit;
+}
+
+.document-split-page-card.is-excluded {
+  opacity: 0.58;
+}
+
+.document-split-page-preview {
+  position: relative;
+  display: grid;
+  height: 220px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  background: #eef2ee;
+}
+
+.document-split-page-preview > img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 160ms ease;
+}
+
+.document-split-page-meta {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  color: #456052;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.document-split-page-meta input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.document-split-page-meta small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+@keyframes document-split-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .document-pdf-card {
   display: grid;
   min-height: 220px;
