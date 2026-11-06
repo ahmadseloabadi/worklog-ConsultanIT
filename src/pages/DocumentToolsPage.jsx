@@ -161,7 +161,7 @@ function ReorderableList({
             moveItem(fromIndex, index);
           }}
         >
-          {renderItem(item, index)}
+          {renderItem(item, index, { moveItem })}
           {showOrderControls && (
             <div className="document-order-controls" aria-label={`Ubah urutan item ${index + 1}`}>
               <button
@@ -1085,7 +1085,8 @@ function DocumentToolsPage() {
                     items={images}
                     onReorder={reorderImages}
                     disabled={busy}
-                    renderItem={(image, index) => (
+                    showOrderControls={false}
+                    renderItem={(image, index, { moveItem }) => (
                       <div className="document-image-item">
                         <img
                           src={image.previewUrl}
@@ -1093,20 +1094,29 @@ function DocumentToolsPage() {
                           style={{ transform: `rotate(${image.rotation}deg)` }}
                         />
                         <div className="document-image-actions">
-                          <button type="button" onClick={() => openFilePreview(image.file, image.rotation, { type: "image", id: image.id })} disabled={busy} aria-label={`Pratinjau ${image.file.name}`} title="Lihat pratinjau" data-tooltip="Lihat pratinjau">
+                          <button type="button" onClick={() => moveItem(index, index - 1)} disabled={busy || index === 0} aria-label={`Pindahkan ${image.file.name} ke atas`} data-tooltip="Pindahkan ke atas">
+                            <Icon name="sortUp" size={15} />
+                          </button>
+                          <button type="button" onClick={() => moveItem(index, index + 1)} disabled={busy || index === images.length - 1} aria-label={`Pindahkan ${image.file.name} ke bawah`} data-tooltip="Pindahkan ke bawah">
+                            <Icon name="sortDown" size={15} />
+                          </button>
+                          <button type="button" onClick={() => openFilePreview(image.file, image.rotation, { type: "image", id: image.id })} disabled={busy} aria-label={`Pratinjau ${image.file.name}`} data-tooltip="Lihat pratinjau">
                             <Icon name="eye" size={15} />
                           </button>
-                          <button type="button" onClick={() => rotateImage(image.id)} disabled={busy} aria-label={`Putar ${image.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
-                            <Icon name="rotate" size={15} />
+                          <button type="button" onClick={() => rotateImage(image.id)} disabled={busy} aria-label={`Putar ${image.file.name}`} data-tooltip="Putar 90° searah jarum jam">
+                            <Icon name="rotateClockwise" size={15} />
                           </button>
-                          <button type="button" onClick={() => duplicateImage(image)} disabled={busy} aria-label={`Duplikat ${image.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
+                          <button type="button" onClick={() => duplicateImage(image)} disabled={busy} aria-label={`Duplikat ${image.file.name}`} data-tooltip="Duplikat file">
                             <Icon name="duplicate" size={15} />
                           </button>
-                          <button type="button" onClick={() => removeImage(image.id)} disabled={busy} aria-label={`Hapus ${image.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
+                          <button type="button" onClick={() => removeImage(image.id)} disabled={busy} aria-label={`Hapus ${image.file.name}`} data-tooltip="Hapus file">
                             <Icon name="trash" size={15} />
                           </button>
                         </div>
-                        <span title={image.file.name}>{image.file.name}</span>
+                        <div className="document-image-item-meta">
+                          <span title={image.file.name}>{image.file.name}</span>
+                          <small>Urutan {index + 1} · Rotasi {image.rotation}°</small>
+                        </div>
                       </div>
                     )}
                   />
@@ -1131,7 +1141,8 @@ function DocumentToolsPage() {
                         items={pdfFiles}
                         onReorder={reorderPdfFiles}
                         disabled={busy}
-                        renderItem={(item, index) => (
+                        showOrderControls={false}
+                        renderItem={(item, index, { moveItem }) => (
                           <div className="document-pdf-card">
                             <FilePagePreview
                               item={item}
@@ -1141,16 +1152,22 @@ function DocumentToolsPage() {
                               disabled={busy}
                               actions={(
                                 <>
-                                  <button type="button" onClick={() => openFilePreview(item.file, item.rotation, { type: "pdf", id: item.id })} disabled={busy} aria-label={`Pratinjau ${item.file.name}`} title="Lihat pratinjau" data-tooltip="Lihat pratinjau">
+                                  <button type="button" onClick={() => moveItem(index, index - 1)} disabled={busy || index === 0} aria-label={`Pindahkan ${item.file.name} ke atas`} data-tooltip="Pindahkan ke atas">
+                                    <Icon name="sortUp" size={15} />
+                                  </button>
+                                  <button type="button" onClick={() => moveItem(index, index + 1)} disabled={busy || index === pdfFiles.length - 1} aria-label={`Pindahkan ${item.file.name} ke bawah`} data-tooltip="Pindahkan ke bawah">
+                                    <Icon name="sortDown" size={15} />
+                                  </button>
+                                  <button type="button" onClick={() => openFilePreview(item.file, item.rotation, { type: "pdf", id: item.id })} disabled={busy} aria-label={`Pratinjau ${item.file.name}`} data-tooltip="Lihat pratinjau">
                                     <Icon name="eye" size={15} />
                                   </button>
-                                  <button type="button" onClick={() => rotatePdfFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
-                                    <Icon name="rotate" size={15} />
+                                  <button type="button" onClick={() => rotatePdfFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} data-tooltip="Putar 90° searah jarum jam">
+                                    <Icon name="rotateClockwise" size={15} />
                                   </button>
-                                  <button type="button" onClick={() => duplicatePdfFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
+                                  <button type="button" onClick={() => duplicatePdfFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} data-tooltip="Duplikat file">
                                     <Icon name="duplicate" size={15} />
                                   </button>
-                                  <button type="button" onClick={() => removePdfFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
+                                  <button type="button" onClick={() => removePdfFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} data-tooltip="Hapus file">
                                     <Icon name="trash" size={15} />
                                   </button>
                                 </>
@@ -1158,7 +1175,10 @@ function DocumentToolsPage() {
                             />
                             <div className="document-pdf-card-meta">
                               <span title={item.file.name}>{item.file.name}</span>
-                              <small>PDF · {fileThumbnails[item.id]?.pageCount ? `${fileThumbnails[item.id].pageCount} halaman` : `Urutan ${index + 1}`}</small>
+                              <small>
+                                PDF · Urutan {index + 1} · Rotasi {item.rotation}°
+                                {fileThumbnails[item.id]?.pageCount ? ` · ${fileThumbnails[item.id].pageCount} halaman` : ""}
+                              </small>
                             </div>
                           </div>
                         )}
@@ -1257,7 +1277,6 @@ function DocumentToolsPage() {
                                     onClick={() => previewSplitPage(page)}
                                     disabled={busy}
                                     aria-label={`Pratinjau halaman ${page.pageNumber}`}
-                                    title="Lihat halaman"
                                     data-tooltip="Lihat halaman"
                                   >
                                     <Icon name="eye" size={15} />
@@ -1267,17 +1286,15 @@ function DocumentToolsPage() {
                                     onClick={() => rotateSplitPage(page.id)}
                                     disabled={busy}
                                     aria-label={`Putar halaman ${page.pageNumber}`}
-                                    title="Putar 90° searah jarum jam"
-                                    data-tooltip="Putar 90°"
+                                    data-tooltip="Putar 90° searah jarum jam"
                                   >
-                                    <Icon name="rotate" size={15} />
+                                    <Icon name="rotateClockwise" size={15} />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => duplicateSplitPage(page)}
                                     disabled={busy || splitLoading}
                                     aria-label={`Duplikat halaman ${page.pageNumber}`}
-                                    title="Buat salinan halaman"
                                     data-tooltip="Duplikat halaman"
                                   >
                                     <Icon name="duplicate" size={15} />
@@ -1287,7 +1304,6 @@ function DocumentToolsPage() {
                                     onClick={() => removeSplitPage(page.id)}
                                     disabled={busy}
                                     aria-label={`Hapus halaman ${page.pageNumber}`}
-                                    title="Hapus halaman dari daftar"
                                     data-tooltip="Hapus halaman"
                                   >
                                     <Icon name="trash" size={15} />
@@ -1343,18 +1359,17 @@ function DocumentToolsPage() {
                                 }}
                                 disabled={busy}
                                 aria-label={`Pratinjau ${item.file.name}`}
-                                title="Lihat pratinjau"
                                 data-tooltip="Lihat pratinjau"
                               >
                                 <Icon name="eye" size={15} />
                               </button>
-                              <button type="button" onClick={() => rotateSelectedFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
-                                <Icon name="rotate" size={15} />
+                              <button type="button" onClick={() => rotateSelectedFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} data-tooltip="Putar 90° searah jarum jam">
+                                <Icon name="rotateClockwise" size={15} />
                               </button>
-                              <button type="button" onClick={() => duplicateSelectedFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
+                              <button type="button" onClick={() => duplicateSelectedFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} data-tooltip="Duplikat file">
                                 <Icon name="duplicate" size={15} />
                               </button>
-                              <button type="button" onClick={() => removeSelectedFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
+                              <button type="button" onClick={() => removeSelectedFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} data-tooltip="Hapus file">
                                 <Icon name="trash" size={15} />
                               </button>
                             </>
@@ -1461,7 +1476,7 @@ function DocumentToolsPage() {
                 <h2 id="document-preview-title">{preview.file.name}</h2>
               </div>
               <button type="button" className="document-preview-close" onClick={rotatePreview} aria-label={`Putar pratinjau ${preview.file.name}`} title="Putar pratinjau" data-tooltip="Putar pratinjau">
-                <Icon name="rotate" size={18} />
+                <Icon name="rotateClockwise" size={18} />
               </button>
               <button type="button" className="document-preview-close" onClick={closePreview} aria-label="Tutup pratinjau" title="Tutup pratinjau" data-tooltip="Tutup pratinjau">
                 <Icon name="close" size={20} />

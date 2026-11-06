@@ -159,6 +159,12 @@ const iconContent = {
       <path d="M20 12a8 8 0 1 1-2.34-5.66L20 9" />
     </>
   ),
+  rotateClockwise: (
+    <>
+      <path d="M21 2v6h-6" />
+      <path d="M21 8a9 9 0 1 0 2.1 5.9" />
+    </>
+  ),
   duplicate: (
     <>
       <rect x="8" y="8" width="13" height="13" rx="2" />

@@ -7335,18 +7335,33 @@ button[aria-busy="true"]::before {
 .document-image-item img {
   display: block;
   width: 100%;
-  height: 105px;
+  height: 220px;
   object-fit: contain;
   background: #eef2ee;
 }
 
-.document-image-item > span {
-  display: block;
+.document-image-item-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 8px;
+}
+
+.document-image-item-meta > span {
+  min-width: 0;
   overflow: hidden;
-  padding: 7px 30px 7px 8px;
   color: #53665b;
   font-size: 10px;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-image-item-meta > small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 9px;
   white-space: nowrap;
 }
 
@@ -7356,7 +7371,7 @@ button[aria-busy="true"]::before {
   top: 7px;
   right: 7px;
   display: flex;
-  gap: 3px;
+  gap: 2px;
   padding: 3px;
   border: 1px solid #e1e8e2;
   border-radius: 6px;
@@ -7367,8 +7382,8 @@ button[aria-busy="true"]::before {
 .document-image-actions button {
   position: relative;
   display: grid;
-  width: 25px;
-  height: 25px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -7385,6 +7400,12 @@ button[aria-busy="true"]::before {
   color: var(--green-deep);
 }
 
+.document-image-actions button:disabled {
+  color: #aab5ac;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .document-image-actions button:last-child {
   color: #a33f32;
 }
@@ -7394,7 +7415,8 @@ button[aria-busy="true"]::before {
 .document-preview-header button[data-tooltip]::after {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 8px);
+  top: auto;
+  bottom: calc(100% + 8px);
   left: 50%;
   width: max-content;
   max-width: 180px;
@@ -7419,16 +7441,30 @@ button[aria-busy="true"]::before {
 .document-preview-header button[data-tooltip]::before {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 3px);
+  top: auto;
+  bottom: calc(100% + 3px);
   left: 50%;
   border: 5px solid transparent;
-  border-bottom-color: #20352c;
+  border-top-color: #20352c;
   content: "";
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%);
   transition: opacity 120ms ease;
   visibility: hidden;
+}
+
+.document-image-actions button:first-child[data-tooltip]::after,
+.document-image-actions button:first-child[data-tooltip]::before {
+  left: 0;
+  transform: translateY(-3px);
+}
+
+.document-image-actions button:last-child[data-tooltip]::after,
+.document-image-actions button:last-child[data-tooltip]::before {
+  right: 0;
+  left: auto;
+  transform: translateY(-3px);
 }
 
 .document-image-actions button[data-tooltip]:hover::after,
@@ -7440,6 +7476,20 @@ button[aria-busy="true"]::before {
   opacity: 1;
   transform: translate(-50%, 0);
   visibility: visible;
+}
+
+.document-image-actions button:first-child[data-tooltip]:hover::after,
+.document-image-actions button:first-child[data-tooltip]:focus-visible::after,
+.document-image-actions button:first-child[data-tooltip]:hover::before,
+.document-image-actions button:first-child[data-tooltip]:focus-visible::before {
+  transform: translateY(0);
+}
+
+.document-image-actions button:last-child[data-tooltip]:hover::after,
+.document-image-actions button:last-child[data-tooltip]:focus-visible::after,
+.document-image-actions button:last-child[data-tooltip]:hover::before,
+.document-image-actions button:last-child[data-tooltip]:focus-visible::before {
+  transform: translateY(0);
 }
 
 .document-image-actions button[data-tooltip]:hover::before,
