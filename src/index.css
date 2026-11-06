@@ -5879,7 +5879,9 @@ button {
   .arcade-toolbar {
     justify-content: space-between;
   }
+  body {
   line-height: 1.45;
+  }
 }
 
 @media (max-width: 760px) {
