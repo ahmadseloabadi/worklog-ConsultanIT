@@ -41,6 +41,17 @@ function saveBlob(blob, name) {
   return { blob, name, url };
 }
 
+function getOutputNameParts(name) {
+  const extensionIndex = name.lastIndexOf(".");
+  return extensionIndex > 0
+    ? { baseName: name.slice(0, extensionIndex), extension: name.slice(extensionIndex) }
+    : { baseName: name, extension: "" };
+}
+
+function sanitizeOutputName(value) {
+  return value.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/[. ]+$/g, "");
+}
+
 function parsePageRange(value, pageCount) {
   const indexes = [];
   for (const part of value.split(",")) {
@@ -197,6 +208,7 @@ function DocumentToolsPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [output, setOutput] = useState(null);
+  const [outputBaseName, setOutputBaseName] = useState("");
   const [preview, setPreview] = useState(null);
   const [draggingFiles, setDraggingFiles] = useState(false);
   const imageInputRef = useRef(null);
@@ -238,6 +250,7 @@ function DocumentToolsPage() {
     setError("");
     setNotice("");
     setOutput(null);
+    setOutputBaseName("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [activeTool, navigate, toolId]);
 
@@ -726,6 +739,7 @@ function DocumentToolsPage() {
     setError("");
     setNotice("");
     setOutput(null);
+    setOutputBaseName("");
     try {
       let result;
       if (activeTool === "image") result = await createImagePdf();
@@ -735,6 +749,7 @@ function DocumentToolsPage() {
       else if (activeTool === "pdf-to-word") result = await convertPdfToWord();
       else result = await convertWordToPdf();
       setOutput(result);
+      setOutputBaseName(getOutputNameParts(result.name).baseName);
       setNotice((current) => current || "Selesai. File diproses di browser Anda.");
     } catch (conversionError) {
       console.error("Pemrosesan dokumen gagal.", conversionError);
@@ -998,20 +1013,40 @@ function DocumentToolsPage() {
 
           {error && <p className="document-message is-error" role="alert">{error}</p>}
           {notice && <p className="document-message" role="status">{notice}</p>}
-          {output && (
-            <a className="document-download-button" href={output.url} download={output.name}>
-              <Icon name="reports" size={17} /> Unduh {output.name}
-            </a>
-          )}
-          <button
-            type="button"
-            className="document-process-button"
-            onClick={runCurrentTool}
-            aria-busy={busy}
-            disabled={busy || (activeTool === "image" ? images.length === 0 : activeTool === "merge" ? pdfFiles.length < 2 : !selectedFile)}
-          >
-            {busy ? "Memproses..." : currentTool.title}
-          </button>
+          <div className="document-result-actions">
+            {output && (
+              <>
+                <label className="document-output-name">
+                  <span>Nama file</span>
+                  <span className="document-output-name-input">
+                    <input
+                      type="text"
+                      value={outputBaseName}
+                      onChange={(event) => setOutputBaseName(event.target.value)}
+                      aria-label="Nama file hasil"
+                    />
+                    <small>{getOutputNameParts(output.name).extension}</small>
+                  </span>
+                </label>
+                <a
+                  className="document-download-button"
+                  href={output.url}
+                  download={`${sanitizeOutputName(outputBaseName) || "dokumen"}${getOutputNameParts(output.name).extension}`}
+                >
+                  <Icon name="download" size={17} /> Unduh
+                </a>
+              </>
+            )}
+            <button
+              type="button"
+              className="document-process-button"
+              onClick={runCurrentTool}
+              aria-busy={busy}
+              disabled={busy || (activeTool === "image" ? images.length === 0 : activeTool === "merge" ? pdfFiles.length < 2 : !selectedFile)}
+            >
+              {busy ? "Memproses..." : currentTool.title}
+            </button>
+          </div>
           <p className="document-privacy-note">Pemrosesan dilakukan secara lokal di browser. Maksimal ukuran file 40 MB.</p>
           </section>
         </div>

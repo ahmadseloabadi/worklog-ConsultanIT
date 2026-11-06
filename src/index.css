@@ -7912,10 +7912,72 @@ button[aria-busy="true"]::before {
   cursor: pointer;
 }
 
+.document-result-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.document-output-name {
+  display: grid;
+  min-width: min(250px, 100%);
+  flex: 1 1 220px;
+  gap: 5px;
+  color: #52665a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.document-output-name-input {
+  display: flex;
+  min-width: 0;
+  height: 40px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #dce4de;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.document-output-name-input:focus-within {
+  border-color: #80a894;
+  box-shadow: 0 0 0 3px rgba(38, 115, 93, 0.1);
+}
+
+.document-output-name-input input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.document-output-name-input small {
+  flex: 0 0 auto;
+  padding: 0 10px 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .document-download-button {
+  flex: 0 0 auto;
   border-color: #dce4de;
   background: #fff;
   color: var(--green-deep);
+}
+
+.document-result-actions .document-process-button,
+.document-result-actions .document-download-button {
+  min-height: 40px;
+  margin: 0;
 }
 
 .document-process-button:disabled {
@@ -7933,6 +7995,10 @@ button[aria-busy="true"]::before {
 }
 
 @media (max-width: 420px) {
+  .document-output-name {
+    flex-basis: 100%;
+  }
+
   .document-dropzone {
     padding: 20px 12px;
   }

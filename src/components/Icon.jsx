@@ -26,6 +26,12 @@ const iconContent = {
       <path d="M3 6h.01M3 12h.01M3 18h.01" />
     </>
   ),
+  download: (
+    <>
+      <path d="M12 3v12m-5-5 5 5 5-5" />
+      <path d="M5 17v3h14v-3" />
+    </>
+  ),
   documents: (
     <>
       <path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
