@@ -9,6 +9,8 @@ const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
 const SetupPage = lazy(() => import("@/pages/SetupPage"));
 const MiniGamesPage = lazy(() => import("@/pages/MiniGamesPage"));
 const DocumentToolsPage = lazy(() => import("@/pages/DocumentToolsPage"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
+const TermsOfServicePage = lazy(() => import("@/pages/TermsOfServicePage"));
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/mini-games" element={<MiniGamesPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms-of-service" element={<TermsOfServicePage />} />
         <Route path="/document-tools" element={<Navigate to="/document-tools/image" replace />} />
         <Route path="/document-tools/:toolId" element={<DocumentToolsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

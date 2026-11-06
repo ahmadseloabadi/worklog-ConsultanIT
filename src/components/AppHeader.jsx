@@ -44,6 +44,8 @@ export default function AppHeader() {
     "/reports": "Laporan",
     "/setup": "Setup Google",
     "/mini-games": "Mini Game",
+    "/privacy-policy": "Kebijakan Privasi",
+    "/terms-of-service": "Ketentuan Layanan",
   }[pathname] || "Daily Worklog");
 
   useEffect(() => {
@@ -198,7 +200,7 @@ export default function AppHeader() {
     <>
       <aside className={`workspace-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`}>
         <Link to="/dashboard" className="brand-link" aria-label="Daily Worklog beranda">
-          <img src="../public/favicon.svg" alt="Logo Daily Worklog" srcset="" className="brand-symbol" />
+          <img src="favicon.svg" alt="Logo Daily Worklog" srcset="" className="brand-symbol" />
           <span className="brand-copy">
             <span className="brand-overline">CONSULTANT IT · WORKLOG</span>
             <strong>Daily Worklog</strong>

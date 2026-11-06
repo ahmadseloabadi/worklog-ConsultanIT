@@ -22,6 +22,7 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Area Dokumen Tools mendukung drag-and-drop file serta kartu berkas bertema aplikasi dengan pengaturan urutan
 - Setiap file gambar, PDF, atau Word memiliki aksi pratinjau, putar, duplikat, dan hapus sebelum diproses
 - Enam fitur Dokumen Tools tersedia sebagai submenu di sidebar; ikon aksi memiliki keterangan saat diarahkan atau difokuskan
+- Halaman publik [Kebijakan Privasi](/privacy-policy) dan [Ketentuan Layanan](/terms-of-service) tersedia untuk informasi penggunaan dan publikasi aplikasi
 
 Dokumen Tools memproses file di browser dan tidak mengunggahnya ke server. Kompres PDF meraster halaman
 sehingga teks tidak lagi dapat dipilih. Konversi PDF/Word mempertahankan teks saja; tata letak dan gambar
