@@ -16,6 +16,17 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Mini Game dengan hitung mundur 3-2-1 sebelum permainan berjalan, menu Start/Settings/Quit game, pemeriksaan dan penyegaran sesi Google sebelum Kompetitif, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred, Bubble Wrap, dan Snake layar penuh, kontrol keyboard/sentuh dan boost Snake, pilihan kecepatan dengan nilai poin berbeda, opsi rintangan pada Freeplay, rintangan wajib dengan pola acak-terstruktur yang sama setiap hari pada Kompetitif, tepi arena yang dapat ditembus pada Freeplay tanpa garis kisi, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard terpisah untuk high score akhir Freeplay dan Kompetitif
 - Upload bukti gambar ke Drive dan pratinjau di detail laporan
 - Setup Google per akun (link spreadsheet + folder Drive) dan pemeriksa token
+- Dokumen Tools: merge/split/kompres PDF, Image to PDF (upload, drag-and-drop, atau paste clipboard), serta konversi teks PDF dan Word secara lokal di browser
+- Urutan file pada Merge PDF dan Image to PDF dapat diubah dengan drag-and-drop atau tombol naik/turun sebelum diproses
+- Dokumen PDF dan Word yang dipilih dapat dipratinjau dan dihapus sebelum diproses
+- Area Dokumen Tools mendukung drag-and-drop file serta kartu berkas bertema aplikasi dengan pengaturan urutan
+- Setiap file gambar, PDF, atau Word memiliki aksi pratinjau, putar, duplikat, dan hapus sebelum diproses
+- Enam fitur Dokumen Tools tersedia sebagai submenu di sidebar; ikon aksi memiliki keterangan saat diarahkan atau difokuskan
+
+Dokumen Tools memproses file di browser dan tidak mengunggahnya ke server. Kompres PDF meraster halaman
+sehingga teks tidak lagi dapat dipilih. Konversi PDF/Word mempertahankan teks saja; tata letak dan gambar
+asli tidak dipertahankan. Putaran pada PDF-to-Word tidak diterapkan karena hasilnya berupa teks. File maksimal
+40 MB per PDF/dokumen, atau 100 MB total gambar untuk Image to PDF.
 
 Kolom sheet (urutan tetap):
 `No | Nama Aplikasi & Daerah | Menu | Tgl Mulai | Permasalahan yang Dihadapi | Solusi | Tgl Selesai | Keterangan`

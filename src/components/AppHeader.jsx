@@ -9,6 +9,14 @@ import { useEffect, useState } from "react";
 
 const sidebarCountCache = new Map();
 const SIDEBAR_COUNT_CACHE_MS = 15_000;
+const documentToolLinks = [
+  { id: "merge", title: "Merge PDF", icon: "mergePdf" },
+  { id: "split", title: "Split PDF", icon: "splitPdf" },
+  { id: "compress", title: "Compress PDF", icon: "compressPdf" },
+  { id: "image", title: "Image to PDF", icon: "imageFile" },
+  { id: "pdf-to-word", title: "PDF to Word", icon: "pdfToWord" },
+  { id: "word-to-pdf", title: "Word to PDF", icon: "wordToPdf" },
+];
 
 export default function AppHeader() {
   const { data: session, status, tokenExpired, error: authMessage } = useSession();
@@ -18,6 +26,7 @@ export default function AppHeader() {
   const [pendingCount, setPendingCount] = useState(null);
   const [countError, setCountError] = useState(false);
   const [activitiesOpen, setActivitiesOpen] = useState(pathname === "/laporan baru" || pathname === "/pending");
+  const [documentToolsOpen, setDocumentToolsOpen] = useState(pathname.startsWith("/document-tools"));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem("daily-worklog-sidebar-collapsed") === "true";
@@ -27,17 +36,22 @@ export default function AppHeader() {
   });
   const imageUrl = session?.user?.image || "";
   const userKey = session?.user?.email?.toLowerCase() || session?.user?.id || "";
-  const pageTitle = {
+  const documentToolTitle = documentToolLinks.find((tool) => pathname === `/document-tools/${tool.id}`)?.title;
+  const pageTitle = documentToolTitle || ({
     "/laporan baru": "Laporan baru",
     "/pending": "Laporan tertunda",
     "/dashboard": "Dashboard",
     "/reports": "Laporan",
     "/setup": "Setup Google",
     "/mini-games": "Mini Game",
-  }[pathname] || "Daily Worklog";
+  }[pathname] || "Daily Worklog");
 
   useEffect(() => {
     if (pathname === "/laporan baru" || pathname === "/pending") setActivitiesOpen(true);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/document-tools")) setDocumentToolsOpen(true);
   }, [pathname]);
 
   useEffect(() => {
@@ -237,6 +251,35 @@ export default function AppHeader() {
             <Icon name="gamepad" className="sidebar-nav-icon" />
             <span>Mini Game</span>
           </NavLink>
+          <div className={`nav-group${pathname.startsWith("/document-tools") ? " has-active-child" : ""}`}>
+            <button
+              type="button"
+              className={`nav-link nav-group-toggle${pathname === "/document-tools" ? " is-active" : ""}`}
+              aria-label="Document Tools"
+              aria-expanded={documentToolsOpen}
+              aria-controls="document-tools-submenu"
+              onClick={() => setDocumentToolsOpen((open) => !open)}
+            >
+              <Icon name="documents" className="sidebar-nav-icon" />
+              <span>Document Tools</span>
+              <Icon name="chevronDown" className={`nav-chevron${documentToolsOpen ? " is-open" : ""}`} size={16} />
+            </button>
+            {documentToolsOpen && (
+              <div className="nav-submenu" id="document-tools-submenu">
+                {documentToolLinks.map((tool) => (
+                  <NavLink
+                    key={tool.id}
+                    aria-label={tool.title}
+                    to={`/document-tools/${tool.id}`}
+                    className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
+                  >
+                    <Icon name={tool.icon} className="sidebar-subnav-marker" size={16} />
+                    <span>{tool.title}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
           <NavLink aria-label="Setup Google" to="/setup" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="settings" className="sidebar-nav-icon" />
             <span>Setup Google</span>

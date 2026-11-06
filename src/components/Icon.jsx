@@ -26,6 +26,55 @@ const iconContent = {
       <path d="M3 6h.01M3 12h.01M3 18h.01" />
     </>
   ),
+  documents: (
+    <>
+      <path d="M7 3h7l5 5v13H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M14 3v5h5M9 13h6m-6 4h6" />
+      <path d="M3 7v14a2 2 0 0 0 2 2h12" />
+    </>
+  ),
+  mergePdf: (
+    <>
+      <path d="M5 4h8l4 4v5M5 4v16h6" />
+      <path d="M13 4v4h4M9 10h4M9 13h2" />
+      <path d="M15 13v8m-4-4h8" />
+    </>
+  ),
+  splitPdf: (
+    <>
+      <path d="M5 3h8l4 4v4M5 3v18h6" />
+      <path d="M13 3v4h4M8 11h3M8 14h2" />
+      <path d="m14 13 3 3-3 3m6-6-3 3 3 3" />
+    </>
+  ),
+  compressPdf: (
+    <>
+      <path d="M5 3h8l4 4v3M5 3v18h6M13 3v4h4" />
+      <path d="M8 11h4m-4 3h3" />
+      <path d="M15 13v6m-2-2 2 2 2-2m4-4v6m-2-2 2 2 2-2" />
+    </>
+  ),
+  imageFile: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9" r="1.5" />
+      <path d="m21 15-5-5L5 20" />
+    </>
+  ),
+  pdfToWord: (
+    <>
+      <path d="M4 3h9l4 4v5M4 3v18h7M13 3v4h4" />
+      <path d="M7 11h5M7 14h3" />
+      <path d="M14 15h7m-6 0 2 6 2-6" />
+    </>
+  ),
+  wordToPdf: (
+    <>
+      <path d="M4 3h9l4 4v5M4 3v18h7M13 3v4h4" />
+      <path d="M7 11h5M7 14h3" />
+      <path d="M14 16h7m-5-2-2 2 2 2" />
+    </>
+  ),
   gamepad: (
     <>
       <path d="M6.5 8h11a4.5 4.5 0 0 1 4.35 5.65l-.8 3A2.8 2.8 0 0 1 16 18l-2.5-2h-3L8 18a2.8 2.8 0 0 1-5.05-1.35l-.8-3A4.5 4.5 0 0 1 6.5 8Z" />
@@ -98,6 +147,18 @@ const iconContent = {
   ),
   close: <path d="m18 6-12 12M6 6l12 12" />,
   edit: <path d="m15 5 4 4M4 20l4.5-1 10.2-10.2a2.1 2.1 0 0 0-3-3L5.5 16 4 20Z" />,
+  rotate: (
+    <>
+      <path d="M20 7v5h-5" />
+      <path d="M20 12a8 8 0 1 1-2.34-5.66L20 9" />
+    </>
+  ),
+  duplicate: (
+    <>
+      <rect x="8" y="8" width="13" height="13" rx="2" />
+      <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+    </>
+  ),
   eye: (
     <>
       <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
@@ -137,6 +198,7 @@ const iconContent = {
   ),
   sortUp: <path d="m7 14 5-5 5 5" />,
   sortDown: <path d="m7 10 5 5 5-5" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />,
 };
 
 export default function Icon({ name, size = 18, strokeWidth = 1.8, className = "" }) {
