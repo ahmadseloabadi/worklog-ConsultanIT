@@ -18,7 +18,7 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Setup Google per akun (link spreadsheet + folder Drive) dan pemeriksa token
 - Dokumen Tools: merge/split/kompres PDF, Image to PDF (upload, drag-and-drop, atau paste clipboard), serta konversi teks PDF dan Word secara lokal di browser
 - Urutan file pada Merge PDF dan Image to PDF dapat diubah dengan drag-and-drop atau tombol naik/turun sebelum diproses
-- Dokumen PDF dan Word yang dipilih dapat dipratinjau dan dihapus sebelum diproses
+- Kartu Merge PDF dan alat PDF/Word lain menampilkan pratinjau halaman pertama (PDF) atau cuplikan teks (Word), dengan aksi ikon pratinjau, putar, duplikat, dan hapus
 - Area Dokumen Tools mendukung drag-and-drop file serta kartu berkas bertema aplikasi dengan pengaturan urutan
 - Setiap file gambar, PDF, atau Word memiliki aksi pratinjau, putar, duplikat, dan hapus sebelum diproses
 - Enam fitur Dokumen Tools tersedia sebagai submenu di sidebar; ikon aksi memiliki keterangan saat diarahkan atau difokuskan

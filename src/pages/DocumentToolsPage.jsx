@@ -52,6 +52,79 @@ function sanitizeOutputName(value) {
   return value.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/[. ]+$/g, "");
 }
 
+async function createFileThumbnail(file) {
+  if (isWordDocument(file)) {
+    const mammoth = await import("mammoth");
+    const { value } = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return { type: "word", text: value.trim().slice(0, 900) };
+  }
+
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  let pdfDocument;
+  try {
+    pdfDocument = await loadingTask.promise;
+    const page = await pdfDocument.getPage(1);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({ scale: Math.min(1, 260 / baseViewport.width) });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("Browser tidak dapat membuat pratinjau PDF.");
+    await page.render({ canvasContext: context, viewport, background: "#fff" }).promise;
+    const thumbnail = {
+      type: "pdf",
+      src: canvas.toDataURL("image/jpeg", 0.8),
+      pageCount: pdfDocument.numPages,
+    };
+    canvas.width = 0;
+    canvas.height = 0;
+    return thumbnail;
+  } finally {
+    await (pdfDocument?.destroy() || loadingTask.destroy());
+  }
+}
+
+function FilePagePreview({ item, thumbnail, rotation, onPreview, actions, disabled }) {
+  return (
+    <div className="document-file-page-preview">
+      <button
+        className="document-file-page-open"
+        type="button"
+        onClick={onPreview}
+        disabled={disabled}
+        aria-label={`Pratinjau ${item.file.name}`}
+        title="Lihat pratinjau"
+      >
+        {thumbnail?.type === "pdf" ? (
+          <img
+            src={thumbnail.src}
+            alt={`Halaman pertama dari ${item.file.name}`}
+            style={{ transform: `rotate(${rotation}deg)` }}
+          />
+        ) : thumbnail?.type === "word" ? (
+          <div className="document-word-page-preview" style={{ transform: `rotate(${rotation}deg)` }}>
+            <span className="document-word-page-lines" aria-hidden="true" />
+            <span>{thumbnail.text || "Dokumen ini tidak memiliki teks yang dapat ditampilkan."}</span>
+          </div>
+        ) : thumbnail?.error ? (
+          <span className="document-file-preview-error">Pratinjau tidak tersedia</span>
+        ) : (
+          <span className="document-file-preview-loading">
+            <span className="document-split-loading-spinner" />
+            Memuat pratinjau...
+          </span>
+        )}
+      </button>
+      <div className="document-image-actions">
+        {actions}
+      </div>
+    </div>
+  );
+}
+
 function ReorderableList({
   items,
   onReorder,
@@ -199,6 +272,7 @@ function DocumentToolsPage() {
   const [splitSourcePages, setSplitSourcePages] = useState([]);
   const [splitLoading, setSplitLoading] = useState(false);
   const [splitProgress, setSplitProgress] = useState({ current: 0, total: 0 });
+  const [fileThumbnails, setFileThumbnails] = useState({});
   const [quality, setQuality] = useState(65);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -217,6 +291,12 @@ function DocumentToolsPage() {
   const currentTool = TOOLS.find((tool) => tool.id === activeTool);
   const activeFile = selectedFiles.find((item) => item.id === activeFileId) || selectedFiles[0] || null;
   const selectedFile = activeFile?.file || null;
+  const fileThumbnailItems = activeTool === "merge"
+    ? pdfFiles
+    : activeTool === "split"
+      ? []
+      : selectedFiles;
+  const fileThumbnailKey = fileThumbnailItems.map((item) => item.id).join("|");
 
   useEffect(() => () => {
     imageListRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
@@ -226,6 +306,35 @@ function DocumentToolsPage() {
     if (!output) return undefined;
     return () => URL.revokeObjectURL(output.url);
   }, [output]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFileThumbnails({});
+    if (!fileThumbnailItems.length) return undefined;
+
+    async function renderFileThumbnails() {
+      for (const item of fileThumbnailItems) {
+        if (cancelled) return;
+        try {
+          const thumbnail = await createFileThumbnail(item.file);
+          if (cancelled) return;
+          setFileThumbnails((current) => ({ ...current, [item.id]: thumbnail }));
+        } catch (thumbnailError) {
+          console.error(`Pratinjau ${item.file.name} gagal dibuat.`, thumbnailError);
+          if (cancelled) return;
+          setFileThumbnails((current) => ({
+            ...current,
+            [item.id]: { error: "Pratinjau file tidak dapat dibuat." },
+          }));
+        }
+      }
+    }
+
+    void renderFileThumbnails();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTool, fileThumbnailKey]);
 
   useEffect(() => {
     if (!preview) return undefined;
@@ -1024,31 +1133,32 @@ function DocumentToolsPage() {
                         disabled={busy}
                         renderItem={(item, index) => (
                           <div className="document-pdf-card">
-                            <button className="document-pdf-cover" type="button" onClick={() => openFilePreview(item.file, item.rotation, { type: "pdf", id: item.id })} disabled={busy} aria-label={`Pratinjau ${item.file.name}`}>
-                              <span className="document-pdf-paper document-pdf-paper-back" />
-                              <span className="document-pdf-paper document-pdf-paper-front" style={{ transform: `rotate(${item.rotation}deg)` }}>
-                                <Icon name="documents" size={31} />
-                                <strong>PDF</strong>
-                                <span>{index + 1}</span>
-                              </span>
-                            </button>
+                            <FilePagePreview
+                              item={item}
+                              thumbnail={fileThumbnails[item.id]}
+                              rotation={item.rotation}
+                              onPreview={() => openFilePreview(item.file, item.rotation, { type: "pdf", id: item.id })}
+                              disabled={busy}
+                              actions={(
+                                <>
+                                  <button type="button" onClick={() => openFilePreview(item.file, item.rotation, { type: "pdf", id: item.id })} disabled={busy} aria-label={`Pratinjau ${item.file.name}`} title="Lihat pratinjau" data-tooltip="Lihat pratinjau">
+                                    <Icon name="eye" size={15} />
+                                  </button>
+                                  <button type="button" onClick={() => rotatePdfFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
+                                    <Icon name="rotate" size={15} />
+                                  </button>
+                                  <button type="button" onClick={() => duplicatePdfFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
+                                    <Icon name="duplicate" size={15} />
+                                  </button>
+                                  <button type="button" onClick={() => removePdfFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
+                                    <Icon name="trash" size={15} />
+                                  </button>
+                                </>
+                              )}
+                            />
                             <div className="document-pdf-card-meta">
                               <span title={item.file.name}>{item.file.name}</span>
-                              <small>File PDF · Urutan {index + 1}</small>
-                            </div>
-                            <div className="document-file-actions">
-                              <button type="button" onClick={() => openFilePreview(item.file, item.rotation, { type: "pdf", id: item.id })} disabled={busy} aria-label={`Pratinjau ${item.file.name}`} title="Lihat pratinjau" data-tooltip="Lihat pratinjau">
-                                <Icon name="eye" size={15} /> Pratinjau
-                              </button>
-                              <button type="button" onClick={() => rotatePdfFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
-                                <Icon name="rotate" size={15} /> Putar
-                              </button>
-                              <button type="button" onClick={() => duplicatePdfFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
-                                <Icon name="duplicate" size={15} /> Duplikat
-                              </button>
-                              <button type="button" onClick={() => removePdfFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
-                                <Icon name="trash" size={15} /> Hapus
-                              </button>
+                              <small>PDF · {fileThumbnails[item.id]?.pageCount ? `${fileThumbnails[item.id].pageCount} halaman` : `Urutan ${index + 1}`}</small>
                             </div>
                           </div>
                         )}
@@ -1209,66 +1319,60 @@ function DocumentToolsPage() {
                     <span className="document-order-hint">Pilih file yang akan diproses.</span>
                   </div>
                   <div className="document-file-board-grid">
-                    {selectedFiles.map((item, index) => (
+                    {selectedFiles.map((item) => (
                       <article
                         key={item.id}
                         className={`document-single-file-card${activeFileId === item.id ? " is-active" : ""}`}
                       >
-                        <button
-                          className="document-pdf-cover"
-                          type="button"
-                          onClick={() => {
+                        <FilePagePreview
+                          item={item}
+                          thumbnail={fileThumbnails[item.id]}
+                          rotation={item.rotation}
+                          onPreview={() => {
                             setActiveFileId(item.id);
                             void openFilePreview(item.file, item.rotation, { type: "single", id: item.id });
                           }}
                           disabled={busy}
-                          aria-label={`Pratinjau ${item.file.name}`}
-                          title="Lihat pratinjau"
-                          data-tooltip="Lihat pratinjau"
-                        >
-                          <span className="document-pdf-paper document-pdf-paper-back" />
-                          <span className="document-pdf-paper document-pdf-paper-front" style={{ transform: `rotate(${item.rotation}deg)` }}>
-                            <Icon name="documents" size={31} />
-                            <strong>{isPdf(item.file) ? "PDF" : "WORD"}</strong>
-                            <span>{index + 1}</span>
-                          </span>
-                        </button>
+                          actions={(
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveFileId(item.id);
+                                  void openFilePreview(item.file, item.rotation, { type: "single", id: item.id });
+                                }}
+                                disabled={busy}
+                                aria-label={`Pratinjau ${item.file.name}`}
+                                title="Lihat pratinjau"
+                                data-tooltip="Lihat pratinjau"
+                              >
+                                <Icon name="eye" size={15} />
+                              </button>
+                              <button type="button" onClick={() => rotateSelectedFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
+                                <Icon name="rotate" size={15} />
+                              </button>
+                              <button type="button" onClick={() => duplicateSelectedFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
+                                <Icon name="duplicate" size={15} />
+                              </button>
+                              <button type="button" onClick={() => removeSelectedFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
+                                <Icon name="trash" size={15} />
+                              </button>
+                            </>
+                          )}
+                        />
                         <div className="document-pdf-card-meta">
                           <span title={item.file.name}>{item.file.name}</span>
-                          <small>{isPdf(item.file) ? "PDF" : "Dokumen Word"} · Rotasi {item.rotation}°</small>
+                          <small>{isPdf(item.file) ? "PDF" : "Dokumen Word"} · Rotasi {item.rotation}°{fileThumbnails[item.id]?.pageCount ? ` · ${fileThumbnails[item.id].pageCount} halaman` : ""}</small>
                         </div>
-                        <div className="document-file-actions">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveFileId(item.id);
-                              void openFilePreview(item.file, item.rotation, { type: "single", id: item.id });
-                            }}
-                            disabled={busy}
-                            aria-label={`Pratinjau ${item.file.name}`}
-                            title="Lihat pratinjau"
-                            data-tooltip="Lihat pratinjau"
-                          >
-                            <Icon name="eye" size={15} /> Preview
-                          </button>
-                          <button type="button" onClick={() => rotateSelectedFile(item.id)} disabled={busy} aria-label={`Putar ${item.file.name}`} title="Putar 90° searah jarum jam" data-tooltip="Putar 90°">
-                            <Icon name="rotate" size={15} /> Rotate
-                          </button>
-                          <button type="button" onClick={() => duplicateSelectedFile(item)} disabled={busy} aria-label={`Duplikat ${item.file.name}`} title="Buat salinan file" data-tooltip="Duplikat file">
-                            <Icon name="duplicate" size={15} /> Duplicate
-                          </button>
-                          <button type="button" onClick={() => removeSelectedFileById(item.id)} disabled={busy} aria-label={`Hapus ${item.file.name}`} title="Hapus file ini" data-tooltip="Hapus file">
-                            <Icon name="trash" size={15} /> Delete
-                          </button>
-                          <button
-                            type="button"
-                            className="document-select-file-button"
-                            onClick={() => setActiveFileId(item.id)}
-                            disabled={busy || activeFileId === item.id}
-                          >
-                            {activeFileId === item.id ? "Dipilih" : "Pilih file"}
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="document-select-file-button"
+                          onClick={() => setActiveFileId(item.id)}
+                          disabled={busy || activeFileId === item.id}
+                          aria-pressed={activeFileId === item.id}
+                        >
+                          {activeFileId === item.id ? "Dipilih untuk diproses" : "Pilih untuk diproses"}
+                        </button>
                       </article>
                     ))}
                     {documentDropZone}
