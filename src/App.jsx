@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import HomePage from "@/pages/HomePage";
+import LoadingScreen from "@/components/LoadingScreen";
 
 // Halaman lain dimuat saat dibuka agar bundel awal kecil.
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
@@ -14,7 +15,7 @@ const TermsOfServicePage = lazy(() => import("@/pages/TermsOfServicePage"));
 
 export default function App() {
   return (
-    <Suspense fallback={<div className="state-panel" role="status">Memuat halaman...</div>}>
+    <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/pending" element={<PendingPage />} />
