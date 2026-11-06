@@ -198,7 +198,7 @@ export default function AppHeader() {
     <>
       <aside className={`workspace-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`}>
         <Link to="/dashboard" className="brand-link" aria-label="Daily Worklog beranda">
-          <span className="brand-symbol" aria-hidden="true">W</span>
+          <img src="../public/favicon.svg" alt="Logo Daily Worklog" srcset="" className="brand-symbol" />
           <span className="brand-copy">
             <span className="brand-overline">CONSULTANT IT · WORKLOG</span>
             <strong>Daily Worklog</strong>
