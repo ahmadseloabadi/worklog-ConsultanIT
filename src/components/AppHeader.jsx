@@ -17,6 +17,13 @@ const documentToolLinks = [
   { id: "pdf-to-word", title: "PDF to Word", icon: "pdfToWord" },
   { id: "word-to-pdf", title: "Word to PDF", icon: "wordToPdf" },
 ];
+const workspaceLinks = [
+  { path: "/calendar", title: "Kalender", icon: "calendar" },
+];
+const activityLinks = [
+  { path: "/notes", title: "Catatan", icon: "notes" },
+  { path: "/todos", title: "To Do", icon: "check" },
+];
 
 export default function AppHeader() {
   const { data: session, status, tokenExpired, error: authMessage } = useSession();
@@ -25,7 +32,11 @@ export default function AppHeader() {
   const [draftCount, setDraftCount] = useState(null);
   const [pendingCount, setPendingCount] = useState(null);
   const [countError, setCountError] = useState(false);
-  const [activitiesOpen, setActivitiesOpen] = useState(pathname === "/laporan baru" || pathname === "/pending");
+  const [activitiesOpen, setActivitiesOpen] = useState(
+    pathname === "/laporan baru" ||
+    pathname === "/pending" ||
+    activityLinks.some((item) => item.path === pathname)
+  );
   const [documentToolsOpen, setDocumentToolsOpen] = useState(pathname.startsWith("/document-tools"));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -41,6 +52,9 @@ export default function AppHeader() {
     "/laporan baru": "Laporan baru",
     "/pending": "Laporan tertunda",
     "/dashboard": "Dashboard",
+    "/notes": "Catatan",
+    "/todos": "To Do",
+    "/calendar": "Kalender",
     "/reports": "Laporan",
     "/setup": "Setup Google",
     "/mini-games": "Mini Game",
@@ -49,7 +63,11 @@ export default function AppHeader() {
   }[pathname] || "Daily Worklog");
 
   useEffect(() => {
-    if (pathname === "/laporan baru" || pathname === "/pending") setActivitiesOpen(true);
+    if (
+      pathname === "/laporan baru" ||
+      pathname === "/pending" ||
+      activityLinks.some((item) => item.path === pathname)
+    ) setActivitiesOpen(true);
   }, [pathname]);
 
   useEffect(() => {
@@ -213,7 +231,18 @@ export default function AppHeader() {
             <Icon name="dashboard" className="sidebar-nav-icon" />
             <span>Dashboard</span>
           </NavLink>
-          <div className={`nav-group${pathname === "/laporan baru" || pathname === "/pending" ? " has-active-child" : ""}`}>
+          {workspaceLinks.map((item) => (
+            <NavLink
+              key={item.path}
+              aria-label={item.title}
+              to={item.path}
+              className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
+            >
+              <Icon name={item.icon} className="sidebar-nav-icon" />
+              <span>{item.title}</span>
+            </NavLink>
+          ))}
+          <div className={`nav-group${pathname === "/laporan baru" || pathname === "/pending" || activityLinks.some((item) => item.path === pathname) ? " has-active-child" : ""}`}>
             <button
               type="button"
               className="nav-link nav-group-toggle"
@@ -242,6 +271,17 @@ export default function AppHeader() {
                     {pendingCount ?? "—"}
                   </span>
                 </NavLink>
+                {activityLinks.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    aria-label={item.title}
+                    to={item.path}
+                    className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
+                  >
+                    <Icon name={item.icon} className="sidebar-subnav-marker" size={16} />
+                    <span>{item.title}</span>
+                  </NavLink>
+                ))}
               </div>
             )}
           </div>

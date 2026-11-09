@@ -13,6 +13,18 @@ const iconContent = {
       <path d="M8 8h8M8 12h8M8 16h5" />
     </>
   ),
+  notes: (
+    <>
+      <path d="M5 3h11l4 4v14H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M15 3v5h5M8 12h8M8 16h6" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 10h18m-13 4h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   clock: (
     <>

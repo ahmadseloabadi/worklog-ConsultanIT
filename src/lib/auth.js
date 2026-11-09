@@ -15,6 +15,7 @@ const ALLOWED_DOMAIN = String(import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN || "")
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const SCOPES = ["openid", "email", "profile", SHEETS_SCOPE, DRIVE_SCOPE].join(" ");
 
 const USER_KEY = "daily-worklog-auth-user";
@@ -53,14 +54,16 @@ export function hasValidToken(minValidityMs = 60_000) {
 
 export function invalidateToken() {
   tokenState = null;
+  calendarScopeGranted = false;
   writeJson(sessionStorage, TOKEN_KEY, null);
 }
 
-function storeToken(response) {
+function storeToken(response, includesCalendar = false) {
   tokenState = {
     token: response.access_token,
     expiresAt: Date.now() + Number(response.expires_in || 3600) * 1000,
   };
+  calendarScopeGranted = includesCalendar;
   writeJson(sessionStorage, TOKEN_KEY, tokenState);
   setState({ tokenExpired: false });
 }
@@ -129,7 +132,7 @@ export function initAuth() {
   loadGis().catch(() => {});
 }
 
-function requestToken({ prompt, hint }) {
+function requestToken({ prompt, hint, includeCalendar = false }) {
   if (!CLIENT_ID) {
     return Promise.reject(authError("VITE_GOOGLE_CLIENT_ID belum diatur.", 500, "config"));
   }
@@ -138,7 +141,7 @@ function requestToken({ prompt, hint }) {
       new Promise((resolve, reject) => {
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
-          scope: SCOPES,
+          scope: includeCalendar ? `${SCOPES} ${CALENDAR_SCOPE}` : SCOPES,
           prompt,
           hint: hint || undefined,
           callback: (response) => {
@@ -157,11 +160,16 @@ function requestToken({ prompt, hint }) {
   );
 }
 
-function ensureScopes(response) {
+function ensureScopes(response, includeCalendar = false) {
   const oauth2 = window.google.accounts.oauth2;
-  if (oauth2.hasGrantedAllScopes && !oauth2.hasGrantedAllScopes(response, SHEETS_SCOPE, DRIVE_SCOPE)) {
+  const requiredScopes = includeCalendar
+    ? [SHEETS_SCOPE, DRIVE_SCOPE, CALENDAR_SCOPE]
+    : [SHEETS_SCOPE, DRIVE_SCOPE];
+  if (oauth2.hasGrantedAllScopes && !oauth2.hasGrantedAllScopes(response, ...requiredScopes)) {
     throw authError(
-      "Izin Google Sheets dan Drive belum disetujui lengkap. Masuk kembali dan centang semua izin.",
+      includeCalendar
+        ? "Izin Google Calendar belum disetujui. Sambungkan ulang dan setujui akses kalender."
+        : "Izin Google Sheets dan Drive belum disetujui lengkap. Masuk kembali dan centang semua izin.",
       403,
       "scope"
     );
@@ -178,6 +186,7 @@ async function fetchProfile(accessToken) {
 
 // ---------- API publik ----------
 let refreshing = null;
+let calendarScopeGranted = false;
 
 /** Mengembalikan access token yang valid; memperbarui diam-diam bila akan segera kedaluwarsa. */
 export function getAccessToken(minValidityMs = 60_000) {
@@ -237,7 +246,29 @@ export async function signIn() {
   }
 }
 
+/** Minta izin Calendar hanya saat pengguna memilih menambahkan item ke kalender. */
+export async function requestCalendarAccess() {
+  const user = state.user;
+  if (!user) throw authError("Masuk dengan akun Google terlebih dahulu.");
+  if (calendarScopeGranted && hasValidToken()) return tokenState.token;
+  try {
+    const response = await requestToken({ prompt: "none", hint: user.email, includeCalendar: true });
+    ensureScopes(response, true);
+    storeToken(response, true);
+    return response.access_token;
+  } catch (error) {
+    if (!["interaction_required", "consent_required", "access_denied", "scope"].includes(error.code)) {
+      throw error;
+    }
+    const response = await requestToken({ prompt: "consent", hint: user.email, includeCalendar: true });
+    ensureScopes(response, true);
+    storeToken(response, true);
+    return response.access_token;
+  }
+}
+
 export function signOut() {
+  calendarScopeGranted = false;
   invalidateToken();
   writeJson(localStorage, USER_KEY, null);
   setState({ user: null, tokenExpired: false, error: "" });

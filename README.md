@@ -11,6 +11,8 @@ Google Sheets/Drive API memakai akun Google yang login, sehingga bisa di-hosting
 - Form catat aktivitas, draft lokal (IndexedDB), template pada tab `TEMPLATE_APLIKASI` di spreadsheet, kirim batch sampai 100 laporan
 - Sheet bulanan otomatis (`Oktober_2026`, dst., atau duplikat dari tab `CONTOH` bila ada), disisipkan kronologis
 - Dashboard, Kelola Laporan (edit, hapus, filter), dan "Cari & rapikan data serupa"
+- Menu Catatan, To Do, dan Kalender sebagai halaman terpisah. Form Catatan/To Do dapat dikustomisasi (teks, teks panjang, tanggal, pilihan, checkbox); To Do memakai papan Kanban yang mendukung drag-and-drop antara Belum dimulai, Sedang dikerjakan, dan Selesai.
+- Kalender bulanan menampilkan Catatan dan To Do pada tanggal khususnya atau, jika tidak ditentukan, tanggal dibuat. To Do bertanggal dapat ditambahkan ke Google Calendar secara manual.
 - Tanggal pekerjaan otomatis mengikuti hari ini, dapat diubah, dan laporan tertunda dapat dipantau dari halaman catatan aktivitas
 - Navigasi sidebar responsif yang dapat diringkas, dengan menu Aktivitas terpisah untuk input dan tindak lanjut; badge jumlah draft dan laporan tertunda di-cache singkat agar perpindahan halaman tetap ringan
 - Mini Game dengan hitung mundur 3-2-1 sebelum permainan berjalan, menu Start/Settings/Quit game, pemeriksaan dan penyegaran sesi Google sebelum Kompetitif, pilihan Main lagi/Settings/Main menu/Quit game pada hasil akhir, Slice & Shred, Bubble Wrap, dan Snake layar penuh, kontrol keyboard/sentuh dan boost Snake, pilihan kecepatan dengan nilai poin berbeda, opsi rintangan pada Freeplay, rintangan wajib dengan pola acak-terstruktur yang sama setiap hari pada Kompetitif, tepi arena yang dapat ditembus pada Freeplay tanpa garis kisi, skor sesi yang tetap terlihat, mode Freeplay atau Kompetitif 60 detik yang berakhir otomatis, pause dengan Settings/Main menu, pengaturan efek visual dan suara, serta leaderboard terpisah untuk high score akhir Freeplay dan Kompetitif
@@ -37,7 +39,7 @@ Status laporan mengikuti kolom `Tgl Selesai`: tanggal terisi berarti **Selesai**
 
 ## 1. Setup Google Cloud
 
-1. Di [Google Cloud Console](https://console.cloud.google.com/) aktifkan **Google Sheets API** dan **Google Drive API**.
+1. Di [Google Cloud Console](https://console.cloud.google.com/) aktifkan **Google Sheets API**, **Google Drive API**, dan **Google Calendar API** jika ingin memakai integrasi kalender.
 2. Google Auth Platform → Audience: bila status **Testing**, tambahkan akun Google Anda di **Test users**.
 3. Buat/ubah **OAuth Client** bertipe **Web application**. Isi **Authorized JavaScript origins**:
    - `http://localhost:3000` (pengembangan lokal)
@@ -54,7 +56,9 @@ cp .env.example .env      # isi VITE_GOOGLE_CLIENT_ID
 npm run dev               # http://localhost:3000
 ```
 
-Lalu buka menu **Setup Google**, tempel link spreadsheet (dan folder Drive jika ingin mengunggah bukti gambar), tekan **Simpan setup**.
+Lalu buka menu **Setup Google**, tempel link spreadsheet laporan (dan folder Drive jika ingin mengunggah bukti gambar), tekan **Simpan setup**. Menu **Catatan** dan **To Do** menggunakan spreadsheet bersama [Catatan & To Do](https://docs.google.com/spreadsheets/d/1BLIZ5YU5GaOZrTiRzjMJVb1Pe33gep3QRUBmTDid5mo/edit); setiap akun yang login menyimpan form dan item pada tab terpisah berdasarkan Gmail. Berikan izin Editor pada spreadsheet tersebut kepada setiap akun yang perlu menggunakannya. Kalender juga membaca data dari spreadsheet ini.
+
+Untuk menghubungkan To Do ke kalender, isi field tanggal pada tugas lalu pilih ikon kalender. Izin Google Calendar diminta hanya saat fitur ini digunakan; item dijadwalkan sebagai acara sepanjang hari dan dapat diperbarui dari item yang sama. Bila spreadsheet yang sama dibagikan ke beberapa akun, semua editor spreadsheet tetap dapat melihat semua tab—gunakan spreadsheet dengan izin Google terpisah untuk isolasi akses yang sebenarnya.
 
 Menu **Mini Game** menampilkan leaderboard tiap game pada pemilih game dan menu awal game, lengkap dengan
 peringkat teratas, ikon mahkota, waktu pembaruan, dan tombol muat ulang. Ranking diperbarui otomatis setiap

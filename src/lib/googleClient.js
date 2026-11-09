@@ -2,6 +2,7 @@ import { getAccessToken, invalidateToken } from "@/lib/auth";
 
 const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 const DRIVE_BASE = "https://www.googleapis.com/drive/v3/files";
+const CALENDAR_BASE = "https://www.googleapis.com/calendar/v3";
 
 const FRIENDLY_MESSAGES = {
   403: "Akses ditolak Google. Pastikan akun yang login punya izin Editor ke spreadsheet/folder tersebut.",
@@ -120,6 +121,17 @@ export async function driveCreatePermission(fileId, requestBody) {
 
 export function driveDownload(fileId) {
   return googleFetch(`${DRIVE_BASE}/${fileId}?alt=media&supportsAllDrives=true`);
+}
+
+export async function createCalendarEvent(event) {
+  return googleJson(`${CALENDAR_BASE}/calendars/primary/events`, jsonBody("POST", event));
+}
+
+export async function updateCalendarEvent(eventId, event) {
+  return googleJson(
+    `${CALENDAR_BASE}/calendars/primary/events/${encodeURIComponent(eventId)}`,
+    jsonBody("PATCH", event)
+  );
 }
 
 export function driveUploadMultipart(metadata, blob, mimeType) {

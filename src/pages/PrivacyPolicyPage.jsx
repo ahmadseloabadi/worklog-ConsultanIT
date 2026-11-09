@@ -24,6 +24,12 @@ export default function PrivacyPolicyPage() {
           aplikasi, menu, tanggal, permasalahan, solusi, keterangan, serta template yang Anda simpan.
         </li>
         <li>
+          <strong>Catatan dan To Do:</strong> field form kustom, isi catatan/tugas, status, dan
+          tanggal jatuh tempo yang disimpan pada tab khusus per akun di spreadsheet Catatan &amp; To Do.
+          Jika Anda memilih integrasi kalender, judul, rincian, dan tanggal tugas dikirim ke Google
+          Calendar untuk membuat atau memperbarui acara.
+        </li>
+        <li>
           <strong>File bukti:</strong> gambar yang Anda pilih untuk dilampirkan pada laporan.
           Aplikasi mengunggahnya ke folder Google Drive yang Anda konfigurasi.
         </li>
@@ -46,6 +52,12 @@ export default function PrivacyPolicyPage() {
         berbagi Drive Anda.
       </p>
       <p>
+        Catatan dan To Do disimpan pada tab dengan identitas Gmail di spreadsheet bersama yang
+        ditentukan aplikasi. Nama tab bukan pembatas izin Google: siapa pun yang memiliki akses ke
+        spreadsheet tersebut dapat melihat tab-tab di dalamnya. Setiap akun yang menggunakan fitur
+        ini harus diberi akses Editor.
+      </p>
+      <p>
         Skor mini game disimpan pada spreadsheet leaderboard yang digunakan aplikasi. Alamat email
         dipakai untuk mengenali skor milik pemain; tampilan leaderboard menggunakan bagian nama
         pengguna sebelum tanda @. Data pada spreadsheet mengikuti izin akses Google yang berlaku
@@ -63,8 +75,9 @@ export default function PrivacyPolicyPage() {
         Saat Anda masuk, Google meminta izin untuk identitas dasar akun, Google Sheets, dan Google
         Drive. Izin ini digunakan untuk memeriksa akses ke spreadsheet atau folder yang Anda
         konfigurasi, membaca dan memperbarui data yang dipakai aplikasi, serta mengelola file bukti.
-        Aplikasi mengakses Google API dari browser Anda menggunakan sesi Google dan tidak menerima
-        kata sandi akun Google Anda.
+        Izin Google Calendar diminta secara terpisah hanya ketika Anda memilih menambahkan To Do ke
+        kalender. Aplikasi mengakses Google API dari browser Anda menggunakan sesi Google dan tidak
+        menerima kata sandi akun Google Anda.
       </p>
       <p>
         Draft dan template tersimpan di IndexedDB browser. Pengaturan dan informasi profil disimpan
@@ -76,11 +89,12 @@ export default function PrivacyPolicyPage() {
 
       <h2>Penyedia layanan dan keamanan</h2>
       <p>
-        Google menyediakan proses masuk serta layanan Sheets dan Drive. Penggunaan layanan Google
-        tunduk pada kebijakan privasi Google. Karena pemrosesan dilakukan di browser dan layanan
-        Google, keamanan dan pembagian data juga bergantung pada keamanan perangkat, akun Google,
-        spreadsheet, dan folder Drive Anda. Gunakan perangkat tepercaya dan jangan membagikan tautan
-        file atau spreadsheet kepada pihak yang tidak Anda kehendaki.
+        Google menyediakan proses masuk serta layanan Sheets, Drive, dan Calendar bila fitur
+        kalender digunakan. Penggunaan layanan Google tunduk pada kebijakan privasi Google. Karena
+        pemrosesan dilakukan di browser dan layanan Google, keamanan dan pembagian data juga
+        bergantung pada keamanan perangkat, akun Google, kalender, spreadsheet, dan folder Drive
+        Anda. Gunakan perangkat tepercaya dan jangan membagikan tautan file atau spreadsheet kepada
+        pihak yang tidak Anda kehendaki.
       </p>
 
       <h2>Retensi dan penghapusan</h2>

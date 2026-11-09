@@ -32,9 +32,10 @@ export default function TermsOfServicePage() {
       <h2>Akun Google dan konten pengguna</h2>
       <p>
         Fitur sinkronisasi memerlukan akun Google dan izin yang relevan untuk Google Sheets dan
-        Google Drive. Anda bertanggung jawab menjaga keamanan akun dan perangkat. Konten yang Anda
-        buat tetap berada di spreadsheet atau folder Drive yang Anda pilih, dengan izin akses yang
-        diatur pada layanan Google tersebut.
+        Google Drive. Penambahan To Do ke kalender memerlukan izin Google Calendar tambahan yang
+        diminta saat fitur tersebut dipakai. Anda bertanggung jawab menjaga keamanan akun dan
+        perangkat. Konten yang Anda buat tetap berada di spreadsheet, folder Drive, atau kalender
+        yang Anda pilih, dengan izin akses yang diatur pada layanan Google tersebut.
       </p>
       <p>
         Gambar bukti yang dilampirkan pada laporan dapat diatur agar dapat dilihat oleh siapa pun
