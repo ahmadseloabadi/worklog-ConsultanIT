@@ -18,11 +18,9 @@ const documentToolLinks = [
   { id: "word-to-pdf", title: "Word to PDF", icon: "wordToPdf" },
 ];
 const workspaceLinks = [
-  { path: "/calendar", title: "Kalender", icon: "calendar" },
-];
-const activityLinks = [
   { path: "/notes", title: "Catatan", icon: "notes" },
   { path: "/todos", title: "To Do", icon: "check" },
+  { path: "/calendar", title: "Kalender", icon: "calendar" },
 ];
 
 export default function AppHeader() {
@@ -32,10 +30,12 @@ export default function AppHeader() {
   const [draftCount, setDraftCount] = useState(null);
   const [pendingCount, setPendingCount] = useState(null);
   const [countError, setCountError] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(
+    workspaceLinks.some((item) => item.path === pathname)
+  );
   const [activitiesOpen, setActivitiesOpen] = useState(
     pathname === "/laporan baru" ||
-    pathname === "/pending" ||
-    activityLinks.some((item) => item.path === pathname)
+    pathname === "/pending"
   );
   const [documentToolsOpen, setDocumentToolsOpen] = useState(pathname.startsWith("/document-tools"));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -63,10 +63,13 @@ export default function AppHeader() {
   }[pathname] || "Daily Worklog");
 
   useEffect(() => {
+    if (workspaceLinks.some((item) => item.path === pathname)) setWorkspaceOpen(true);
+  }, [pathname]);
+
+  useEffect(() => {
     if (
       pathname === "/laporan baru" ||
-      pathname === "/pending" ||
-      activityLinks.some((item) => item.path === pathname)
+      pathname === "/pending"
     ) setActivitiesOpen(true);
   }, [pathname]);
 
@@ -231,18 +234,36 @@ export default function AppHeader() {
             <Icon name="dashboard" className="sidebar-nav-icon" />
             <span>Dashboard</span>
           </NavLink>
-          {workspaceLinks.map((item) => (
-            <NavLink
-              key={item.path}
-              aria-label={item.title}
-              to={item.path}
-              className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
+          <div className={`nav-group${workspaceLinks.some((item) => item.path === pathname) ? " has-active-child" : ""}`}>
+            <button
+              type="button"
+              className="nav-link nav-group-toggle"
+              aria-label="Workspace"
+              aria-expanded={workspaceOpen}
+              aria-controls="workspace-submenu"
+              onClick={() => setWorkspaceOpen((open) => !open)}
             >
-              <Icon name={item.icon} className="sidebar-nav-icon" />
-              <span>{item.title}</span>
-            </NavLink>
-          ))}
-          <div className={`nav-group${pathname === "/laporan baru" || pathname === "/pending" || activityLinks.some((item) => item.path === pathname) ? " has-active-child" : ""}`}>
+              <Icon name="workspace" className="sidebar-nav-icon" />
+              <span>Workspace</span>
+              <Icon name="chevronDown" className={`nav-chevron${workspaceOpen ? " is-open" : ""}`} size={16} />
+            </button>
+            {workspaceOpen && (
+              <div className="nav-submenu" id="workspace-submenu">
+                {workspaceLinks.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    aria-label={item.title}
+                    to={item.path}
+                    className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
+                  >
+                    <Icon name={item.icon} className="sidebar-subnav-marker" size={16} />
+                    <span>{item.title}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className={`nav-group${pathname === "/laporan baru" || pathname === "/pending" ? " has-active-child" : ""}`}>
             <button
               type="button"
               className="nav-link nav-group-toggle"
@@ -271,17 +292,6 @@ export default function AppHeader() {
                     {pendingCount ?? "—"}
                   </span>
                 </NavLink>
-                {activityLinks.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    aria-label={item.title}
-                    to={item.path}
-                    className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
-                  >
-                    <Icon name={item.icon} className="sidebar-subnav-marker" size={16} />
-                    <span>{item.title}</span>
-                  </NavLink>
-                ))}
               </div>
             )}
           </div>
