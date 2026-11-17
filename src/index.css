@@ -6105,7 +6105,7 @@ button {
 }
 
 .sidebar-section-label {
-  margin: 39px 10px 11px;
+  margin: 39px 10px 0px;
   color: #9ab3a6;
   font-size: 9px;
   font-weight: 700;
@@ -6119,7 +6119,7 @@ button {
   flex: 1 1 auto;
   align-content: start;
   /* gap: 5px; */
-  margin: 0;
+  margin: 8px 0 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-color: rgba(197, 213, 204, 0.35) transparent;
