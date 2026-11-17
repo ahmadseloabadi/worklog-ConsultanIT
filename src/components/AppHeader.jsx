@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { getSavedDrafts } from "@/lib/draftStorage";
 import { readGoogleSettings } from "@/lib/googleSettings";
 import Icon from "@/components/Icon";
+import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 
 const sidebarCountCache = new Map();
@@ -31,6 +32,7 @@ export default function AppHeader() {
   const [pendingCount, setPendingCount] = useState(null);
   const [countError, setCountError] = useState(false);
   const [countRefreshKey, setCountRefreshKey] = useState(0);
+  const [hoveredMenu, setHoveredMenu] = useState(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(
     workspaceLinks.some((item) => item.path === pathname)
   );
@@ -63,9 +65,28 @@ export default function AppHeader() {
     "/terms-of-service": "Ketentuan Layanan",
   }[pathname] || "Daily Worklog");
 
+  function showMenuTooltip(event) {
+    if (!sidebarCollapsed) return;
+    const menuItem = event.target.closest?.(".nav-link[data-tooltip]");
+    if (!menuItem || !event.currentTarget.contains(menuItem)) return;
+    const rect = menuItem.getBoundingClientRect();
+    const tooltip = {
+      target: menuItem,
+      label: menuItem.dataset.tooltip,
+      detail: menuItem.dataset.tooltipDetail,
+      left: rect.right + 10,
+      top: Math.min(rect.top + rect.height / 2, window.innerHeight - 36),
+    };
+    setHoveredMenu((current) => current?.target === menuItem ? current : tooltip);
+  }
+
   useEffect(() => {
     if (workspaceLinks.some((item) => item.path === pathname)) setWorkspaceOpen(true);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!sidebarCollapsed) setHoveredMenu(null);
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (
@@ -230,8 +251,18 @@ export default function AppHeader() {
         </Link>
 
         <span className="sidebar-section-label">Menu</span>
-        <nav className="main-navigation" aria-label="Navigasi utama">
-          <NavLink aria-label="Dashboard" to="/dashboard" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+        <nav
+          className="main-navigation"
+          aria-label="Navigasi utama"
+          onMouseOver={showMenuTooltip}
+          onMouseLeave={() => setHoveredMenu(null)}
+          onFocusCapture={showMenuTooltip}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setHoveredMenu(null);
+          }}
+          onScroll={() => setHoveredMenu(null)}
+        >
+          <NavLink aria-label="Dashboard" data-tooltip={sidebarCollapsed ? "Dashboard" : undefined} to="/dashboard" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="dashboard" className="sidebar-nav-icon" />
             <span>Dashboard</span>
           </NavLink>
@@ -240,6 +271,8 @@ export default function AppHeader() {
               type="button"
               className="nav-link nav-group-toggle"
               aria-label="Workspace"
+              data-tooltip={sidebarCollapsed ? "Workspace" : undefined}
+              data-tooltip-detail={sidebarCollapsed ? `Berisi ${workspaceLinks.length} pilihan` : undefined}
               aria-expanded={workspaceOpen}
               aria-controls="workspace-submenu"
               onClick={() => setWorkspaceOpen((open) => !open)}
@@ -254,6 +287,7 @@ export default function AppHeader() {
                   <NavLink
                     key={item.path}
                     aria-label={item.title}
+                    data-tooltip={sidebarCollapsed ? item.title : undefined}
                     to={item.path}
                     className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
                   >
@@ -269,6 +303,8 @@ export default function AppHeader() {
               type="button"
               className="nav-link nav-group-toggle"
               aria-label="Aktivitas"
+              data-tooltip={sidebarCollapsed ? "Aktivitas" : undefined}
+              data-tooltip-detail={sidebarCollapsed ? "Berisi 2 pilihan" : undefined}
               aria-expanded={activitiesOpen}
               aria-controls="activity-submenu"
               onClick={() => setActivitiesOpen((open) => !open)}
@@ -279,14 +315,14 @@ export default function AppHeader() {
             </button>
             {activitiesOpen && (
               <div className="nav-submenu" id="activity-submenu">
-                <NavLink aria-label={`Input laporan, ${draftCount ?? "jumlah tidak diketahui"} draft sementara`} end to="/laporan baru" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+                <NavLink aria-label={`Input laporan, ${draftCount ?? "jumlah tidak diketahui"} draft sementara`} data-tooltip={sidebarCollapsed ? "Input laporan" : undefined} end to="/laporan baru" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
                   <Icon name="plus" className="sidebar-subnav-marker" size={16} />
                   <span>Input laporan</span>
                   <span className="nav-badge" aria-label={`${draftCount ?? "tidak diketahui"} draft sementara`}>
                     {draftCount ?? "—"}
                   </span>
                 </NavLink>
-                <NavLink aria-label={`Laporan tertunda, ${pendingCount ?? "jumlah tidak diketahui"} laporan`} to="/pending" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+                <NavLink aria-label={`Laporan tertunda, ${pendingCount ?? "jumlah tidak diketahui"} laporan`} data-tooltip={sidebarCollapsed ? "Laporan tertunda" : undefined} to="/pending" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
                   <Icon name="clock" className="sidebar-subnav-marker" size={16} />
                   <span>Laporan tertunda</span>
                   <span className="nav-badge is-pending" aria-label={`${pendingCount ?? "tidak diketahui"} laporan tertunda`}>
@@ -296,11 +332,11 @@ export default function AppHeader() {
               </div>
             )}
           </div>
-          <NavLink aria-label="Laporan" to="/reports" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+          <NavLink aria-label="Laporan" data-tooltip={sidebarCollapsed ? "Laporan" : undefined} to="/reports" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="reports" className="sidebar-nav-icon" />
             <span>Laporan</span>
           </NavLink>
-          <NavLink aria-label="Mini Game" to="/mini-games" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+          <NavLink aria-label="Mini Game" data-tooltip={sidebarCollapsed ? "Mini Game" : undefined} to="/mini-games" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="gamepad" className="sidebar-nav-icon" />
             <span>Mini Game</span>
           </NavLink>
@@ -309,6 +345,8 @@ export default function AppHeader() {
               type="button"
               className={`nav-link nav-group-toggle${pathname === "/document-tools" ? " is-active" : ""}`}
               aria-label="Document Tools"
+              data-tooltip={sidebarCollapsed ? "Document Tools" : undefined}
+              data-tooltip-detail={sidebarCollapsed ? `Berisi ${documentToolLinks.length} pilihan` : undefined}
               aria-expanded={documentToolsOpen}
               aria-controls="document-tools-submenu"
               onClick={() => setDocumentToolsOpen((open) => !open)}
@@ -323,6 +361,7 @@ export default function AppHeader() {
                   <NavLink
                     key={tool.id}
                     aria-label={tool.title}
+                    data-tooltip={sidebarCollapsed ? tool.title : undefined}
                     to={`/document-tools/${tool.id}`}
                     className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}
                   >
@@ -333,7 +372,7 @@ export default function AppHeader() {
               </div>
             )}
           </div>
-          <NavLink aria-label="Setup Google" to="/setup" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
+          <NavLink aria-label="Setup Google" data-tooltip={sidebarCollapsed ? "Setup Google" : undefined} to="/setup" className={({ isActive }) => `nav-link${isActive ? " is-active" : ""}`}>
             <Icon name="settings" className="sidebar-nav-icon" />
             <span>Setup Google</span>
           </NavLink>
@@ -342,10 +381,22 @@ export default function AppHeader() {
         <div className="sidebar-footer">
           <span className="connection-dot" />
           <span>{session ? "Google tersambung" : "Masuk untuk sinkronisasi"}</span>
-          {countError && <span className="sidebar-count-error" role="status">Jumlah laporan tidak dapat dimuat.</span>}
+          {/* {countError && <span className="sidebar-count-error" role="status">Jumlah laporan tidak dapat dimuat.</span>} */}
           <span className="sidebar-copyright"><strong>© {new Date().getFullYear()}  AHMAD SELO ABADI</strong></span>
         </div>
       </aside>
+
+      {hoveredMenu && createPortal(
+        <div
+          className="sidebar-hover-tooltip"
+          role="tooltip"
+          style={{ left: `${hoveredMenu.left}px`, top: `${hoveredMenu.top}px` }}
+        >
+          <strong>{hoveredMenu.label}</strong>
+          {hoveredMenu.detail && <span>{hoveredMenu.detail}</span>}
+        </div>,
+        document.body
+      )}
 
       <header className="workspace-mainbar">
         <button
