@@ -120,6 +120,7 @@ export default function LogForm() {
   const [templateError, setTemplateError] = useState("");
   const [worklogs, setWorklogs] = useState([]);
   const [recommendationStatus, setRecommendationStatus] = useState({ loading: false, error: "" });
+  const [dataRefreshKey, setDataRefreshKey] = useState(0);
   const [selectedDraftIds, setSelectedDraftIds] = useState([]);
   const [editingDraftId, setEditingDraftId] = useState(null);
   const [images, setImages] = useState([]);
@@ -264,7 +265,7 @@ export default function LogForm() {
 
     void loadTemplates();
     return () => { cancelled = true; };
-  }, [session?.user?.email]);
+  }, [dataRefreshKey, session?.user?.email]);
 
   useEffect(() => {
     let cancelled = false;
@@ -300,7 +301,7 @@ export default function LogForm() {
       });
 
     return () => { cancelled = true; };
-  }, [session?.user?.email]);
+  }, [dataRefreshKey, session?.user?.email]);
 
   useEffect(() => {
     function handlePaste(event) {
@@ -786,6 +787,15 @@ export default function LogForm() {
               <p>Template tersimpan di spreadsheet yang dipilih, bukan di penyimpanan lokal browser.</p>
             </div>
             <div className="template-panel-actions">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setDataRefreshKey((current) => current + 1)}
+                disabled={!hasSpreadsheetSetup || !templatesLoaded || recommendationStatus.loading}
+                aria-label="Muat ulang template dan data rekomendasi"
+              >
+                {recommendationStatus.loading || !templatesLoaded ? "Memuat..." : "Muat ulang"}
+              </button>
               <button
                 className="text-button"
                 type="button"
