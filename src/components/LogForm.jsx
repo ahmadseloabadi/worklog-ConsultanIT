@@ -169,6 +169,7 @@ export default function LogForm() {
           dataUrl,
           previewUrl: dataUrl,
           fileName: file.name,
+          caption: "",
         });
       }
     }
@@ -530,7 +531,7 @@ export default function LogForm() {
         id: editingDraftId || crypto.randomUUID(),
         createdAt: previousDraft?.createdAt || now,
         updatedAt: now,
-        images: images.map(({ dataUrl, fileName }) => ({ dataUrl, fileName })),
+        images: images.map(({ dataUrl, fileName, caption }) => ({ dataUrl, fileName, caption })),
       };
       await saveStoredDraft(draft);
       setDrafts((current) => [draft, ...current.filter((item) => item.id !== draft.id)]);
@@ -565,6 +566,7 @@ export default function LogForm() {
         dataUrl,
         previewUrl: dataUrl,
         fileName: typeof image === "string" ? "bukti.png" : image.fileName,
+        caption: typeof image === "string" ? "" : image.caption || "",
       };
     }));
     setEditingDraftId(draft.id);
@@ -657,7 +659,7 @@ export default function LogForm() {
       setSendProgress(`Menyiapkan 0 dari ${selectedDrafts.length} laporan...`);
       const entries = await mapWithConcurrency(selectedDrafts, 3, async (draft) => {
         const draftImages = draft.images || (draft.imageDataUrl ? [draft.imageDataUrl] : []);
-        const imageUrls = await mapWithConcurrency(draftImages, 1, async (image) => {
+        const imageAttachments = await mapWithConcurrency(draftImages, 1, async (image) => {
           const dataUrl = typeof image === "string" ? image : image.dataUrl;
           const uploadResponse = await apiFetch("/api/upload", {
             method: "POST",
@@ -671,7 +673,10 @@ export default function LogForm() {
           const uploadData = await uploadResponse.json();
           if (!uploadResponse.ok) throw new Error(uploadData.error || "Bukti gagal diunggah.");
           if (!uploadData.url) throw new Error("Upload berhasil tetapi tautan gambar tidak diterima.");
-          return uploadData.url;
+          return {
+            url: uploadData.url,
+            caption: typeof image === "string" ? "" : image.caption || "",
+          };
         });
         preparedCount += 1;
         setSendProgress(`Menyiapkan ${preparedCount} dari ${selectedDrafts.length} laporan...`);
@@ -683,7 +688,7 @@ export default function LogForm() {
           solusi: draft.solusi,
           tglSelesai: toDisplayDate(draft.tglSelesai),
           keterangan: draft.keterangan,
-          imageUrls,
+          imageAttachments,
         };
       });
 
@@ -1049,7 +1054,21 @@ export default function LogForm() {
                 >
                   <img src={image.previewUrl} alt={`Pratinjau bukti pekerjaan ${index + 1}`} />
                 </button>
-                <span>{image.fileName || `Bukti ${index + 1}`} siap dilampirkan</span>
+                <div className="attachment-copy">
+                  <span>{image.fileName || `Bukti ${index + 1}`} siap dilampirkan</span>
+                  <label className="image-caption-field">
+                    <span>Keterangan gambar (opsional)</span>
+                    <input
+                      type="text"
+                      value={image.caption || ""}
+                      onChange={(event) => setImages((current) => current.map((item) => (
+                        item.id === image.id ? { ...item, caption: event.target.value } : item
+                      )))}
+                      placeholder="Contoh: Tampilan error setelah login"
+                      maxLength={240}
+                    />
+                  </label>
+                </div>
                 <button
                   type="button"
                   className="remove-button"

@@ -90,12 +90,18 @@ async function postBatch(body) {
   });
 
   const entriesWithEvidenceLinks = entries.map((entry) => {
-    const imageUrls = Array.isArray(entry.imageUrls)
-      ? entry.imageUrls.filter((url) => typeof url === "string" && url.trim())
-      : entry.imageUrl
-        ? [entry.imageUrl]
-        : [];
-    const evidenceLinks = imageUrls.map((url, index) => `Bukti ${index + 1}: ${url}`).join("\n");
+    const imageAttachments = Array.isArray(entry.imageAttachments)
+      ? entry.imageAttachments
+        .filter((image) => image && typeof image.url === "string" && image.url.trim())
+        .map((image) => ({ url: image.url.trim(), caption: typeof image.caption === "string" ? image.caption.trim() : "" }))
+      : (Array.isArray(entry.imageUrls)
+        ? entry.imageUrls.filter((url) => typeof url === "string" && url.trim()).map((url) => ({ url: url.trim(), caption: "" }))
+        : entry.imageUrl
+          ? [{ url: entry.imageUrl, caption: "" }]
+          : []);
+    const evidenceLinks = imageAttachments.map(({ url, caption }) => (
+      caption ? `${caption}: ${url}` : `Bukti: ${url}`
+    )).join("\n");
     return {
       ...entry,
       keterangan: [entry.keterangan?.trim(), evidenceLinks].filter(Boolean).join("\n"),

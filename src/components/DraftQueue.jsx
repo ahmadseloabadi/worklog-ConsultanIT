@@ -237,7 +237,11 @@ export default function DraftQueue({
                                 alt=""
                               />
                             </button>
-                            <figcaption>Bukti {index + 1}</figcaption>
+                              <figcaption>
+                                {typeof image === "object" && image.caption?.trim()
+                                  ? image.caption
+                                  : `Bukti ${index + 1}`}
+                              </figcaption>
                           </figure>
                         );
                       })}

@@ -945,6 +945,37 @@ button {
   font-size: 12px;
 }
 
+.attachment-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 7px;
+}
+
+.image-caption-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.image-caption-field input {
+  width: min(100%, 520px);
+  min-height: 30px;
+  padding: 6px 8px;
+  border: 1px solid #cbd9cd;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.image-caption-field input:focus {
+  border-color: var(--green);
+  outline: 2px solid rgba(104, 169, 120, 0.16);
+  outline-offset: 1px;
+}
+
 .attachment-preview img {
   width: 48px;
   height: 48px;
