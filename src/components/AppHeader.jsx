@@ -408,14 +408,14 @@ export default function AppHeader() {
         >
           <Icon name={sidebarCollapsed ? "panelOpen" : "panelClose"} size={18} />
         </button>
-        {countError && (
+        {/* {countError && (
           <div className="workspace-data-alert" role="alert">
             <span>Jumlah laporan tidak dapat dimuat.</span>
             <button type="button" onClick={() => setCountRefreshKey((current) => current + 1)}>
               Coba lagi
             </button>
           </div>
-        )}
+        )} */}
         <div className="topbar-actions">
           {authMessage && <span className="session-loading" role="alert">{authMessage}</span>}
           {status === "loading" ? (
