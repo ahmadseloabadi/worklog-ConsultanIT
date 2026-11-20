@@ -3512,6 +3512,17 @@ button {
 
 .blocker-list li {
   min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.blocker-list li:hover,
+.blocker-list li:focus-within {
+  border-color: #dce8dc;
+  background: #f5f8f4;
 }
 
 .blocker-rank {
@@ -3528,7 +3539,7 @@ button {
   grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: start;
   gap: 7px;
-  padding: 4px 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
