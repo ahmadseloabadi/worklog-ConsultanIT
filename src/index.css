@@ -2513,7 +2513,21 @@ button {
 }
 
 .dashboard-content {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+}
+
+.dashboard-content > .calendar-panel {
+  order: 3;
+}
+
+.dashboard-content > .dashboard-chart-grid {
+  order: 4;
+}
+
+.dashboard-content > .recent-panel {
+  order: 5;
 }
 
 .dashboard-intro {
@@ -2786,6 +2800,180 @@ button {
   margin-bottom: 24px;
 }
 
+.calendar-panel {
+  margin-bottom: 24px;
+}
+
+.dashboard-calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 230px));
+  gap: 10px;
+  justify-content: start;
+}
+
+.dashboard-calendar-month-card {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #e1e9e2;
+  border-radius: 7px;
+  background: #fbfdfb;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.dashboard-calendar-month-card:hover,
+.dashboard-calendar-month-card:focus-visible,
+.dashboard-calendar-month-card.is-selected {
+  border-color: #9cbeaa;
+  background: #f2f8f3;
+  box-shadow: 0 5px 14px rgba(28, 45, 39, 0.06);
+  transform: translateY(-1px);
+}
+
+.dashboard-calendar-month-card:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.dashboard-calendar-month-card strong {
+  color: var(--green-deep);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.dashboard-calendar-month-card span {
+  color: #40534a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dashboard-calendar-month-card small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.dashboard-calendar-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -3px 0 15px;
+}
+
+.dashboard-calendar-summary span {
+  padding: 5px 8px;
+  border: 1px solid #e1e9e2;
+  border-radius: 4px;
+  background: #fbfdfb;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.dashboard-calendar-summary strong {
+  margin-right: 3px;
+  color: #40534a;
+  font-size: 12px;
+}
+
+.dashboard-calendar-summary .is-completed strong { color: #3c8b73; }
+.dashboard-calendar-summary .is-pending strong { color: #b47a26; }
+.dashboard-calendar-summary .is-issue strong { color: #a94e40; }
+
+.dashboard-calendar-weekdays,
+.dashboard-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dashboard-calendar-weekdays {
+  margin-bottom: 6px;
+}
+
+.dashboard-calendar-weekdays span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.dashboard-calendar-day {
+  display: grid;
+  min-width: 0;
+  min-height: 76px;
+  align-content: start;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid #e1e9e2;
+  border-radius: 5px;
+  background: #fbfdfb;
+  color: var(--muted);
+  cursor: default;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+button.dashboard-calendar-day.has-data {
+  cursor: pointer;
+}
+
+button.dashboard-calendar-day.has-data:hover,
+button.dashboard-calendar-day.has-data:focus-visible,
+button.dashboard-calendar-day.is-selected {
+  border-color: #9cbeaa;
+  background: #f2f8f3;
+  transform: translateY(-1px);
+}
+
+button.dashboard-calendar-day.has-data:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.dashboard-calendar-day.is-empty {
+  min-height: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.dashboard-calendar-day strong {
+  color: #40534a;
+  font-size: 12px;
+}
+
+.dashboard-calendar-day > span {
+  color: var(--green-deep);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.dashboard-calendar-day small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.dashboard-calendar-day em {
+  overflow: hidden;
+  color: #a94e40;
+  font-size: 8px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-calendar-day .dashboard-calendar-no-data {
+  color: #b5c0b7;
+  font-size: 12px;
+}
+
 .application-issues-panel,
 .blockers-panel {
   display: flex;
@@ -2971,6 +3159,88 @@ button {
   position: relative;
   min-height: 270px;
   padding: 2px 0 0;
+}
+
+.activity-daily-chart {
+  display: flex;
+  min-height: 270px;
+  align-items: end;
+  gap: 5px;
+  padding: 10px 4px 0;
+  overflow-x: auto;
+}
+
+.activity-daily-column {
+  display: grid;
+  flex: 0 0 31px;
+  grid-template-rows: 18px 210px 18px auto;
+  min-height: 250px;
+  align-items: end;
+  gap: 4px;
+  padding: 0 3px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+  text-align: center;
+}
+
+.activity-daily-column.has-data {
+  cursor: pointer;
+}
+
+.activity-daily-column.has-data:hover,
+.activity-daily-column.has-data:focus-visible,
+.activity-daily-column.is-selected {
+  border-color: #c9ddcd;
+  background: #f2f8f3;
+}
+
+.activity-daily-column:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.activity-daily-value {
+  color: var(--green-deep);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.activity-daily-track {
+  display: flex;
+  height: 210px;
+  align-items: end;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 4px;
+  border-bottom: 1px solid #dce6de;
+  background: repeating-linear-gradient(to top, transparent 0, transparent 51px, #edf2ee 52px);
+}
+
+.activity-daily-track i {
+  display: block;
+  width: 9px;
+  min-height: 0;
+  border-radius: 3px 3px 0 0;
+}
+
+.activity-daily-track i.is-completed { background: #3c8b73; }
+.activity-daily-track i.is-pending { background: #d99a39; }
+
+.activity-daily-column > strong {
+  color: #53665b;
+  font-size: 9px;
+}
+
+.activity-daily-column > small {
+  min-height: 11px;
+  overflow: hidden;
+  color: #a94e40;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activity-svg-wrap {
@@ -3551,6 +3821,11 @@ button {
   border-radius: 3px;
   outline: 2px solid var(--green);
   outline-offset: 2px;
+}
+
+.blocker-select.is-selected {
+  color: var(--green-deep);
+  font-weight: 700;
 }
 
 .blocker-text {
@@ -5985,6 +6260,20 @@ button {
 
   .activity-panel {
     margin-bottom: 20px;
+  }
+
+  .calendar-panel {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-calendar-grid,
+  .dashboard-calendar-weekdays {
+    gap: 4px;
+  }
+
+  .dashboard-calendar-day {
+    min-height: 68px;
+    padding: 6px;
   }
 
   .dashboard-intro {

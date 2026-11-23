@@ -63,6 +63,7 @@ export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshFeedback, setRefreshFeedback] = useState(null);
   const [viewingReport, setViewingReport] = useState(null);
+  const [yearFilter, setYearFilter] = useState(() => String(new Date().getFullYear()));
   const [monthFilter, setMonthFilter] = useState("all");
   const [blockerPage, setBlockerPage] = useState(1);
   const [applicationIssuePage, setApplicationIssuePage] = useState(1);
@@ -77,7 +78,7 @@ export default function Dashboard() {
   const [tableSort, setTableSort] = useState({ field: "tglMulai", direction: -1 });
   const [chartHover, setChartHover] = useState(null);
   const [chartSeries, setChartSeries] = useState("all");
-  const hasDashboardFilters = monthFilter !== "all" || Boolean(startDate || endDate) ||
+  const hasDashboardFilters = yearFilter !== "all" || monthFilter !== "all" || Boolean(startDate || endDate) ||
     application !== "all" || menu !== "all" || statusFilter !== "all";
 
   useEffect(() => {
@@ -120,12 +121,21 @@ export default function Dashboard() {
   const availableMonths = useMemo(() => [...new Set(worklogs
     .map((item) => getMonthKey(item.tglMulai))
     .filter(Boolean))].sort((a, b) => b.localeCompare(a)), [worklogs]);
+  const availableYears = useMemo(() => [...new Set(availableMonths.map((item) => item.slice(0, 4)))], [availableMonths]);
+  const filteredMonths = useMemo(
+    () => availableMonths.filter((item) => yearFilter === "all" || item.startsWith(`${yearFilter}-`)),
+    [availableMonths, yearFilter]
+  );
 
   useEffect(() => {
-    if (monthFilter !== "all" && !availableMonths.includes(monthFilter)) {
+    if (yearFilter !== "all" && !availableYears.includes(yearFilter)) {
+      setYearFilter(availableYears[0] || "all");
+      return;
+    }
+    if (monthFilter !== "all" && !filteredMonths.includes(monthFilter)) {
       setMonthFilter("all");
     }
-  }, [availableMonths, monthFilter]);
+  }, [availableYears, filteredMonths, monthFilter, yearFilter]);
 
   const applications = useMemo(
     () => [...new Set(worklogs.map((item) => item.aplikasi).filter(Boolean))].sort((a, b) => a.localeCompare(b, "id")),
@@ -141,12 +151,13 @@ export default function Dashboard() {
 
   const filteredByOtherFilters = useMemo(() => worklogs.filter((item) => {
     if (!item.tglMulai || (startDate && item.tglMulai < startDate) || (endDate && item.tglMulai > endDate)) return false;
+    if (yearFilter !== "all" && !item.tglMulai.startsWith(`${yearFilter}-`)) return false;
     if (statusFilter === "completed" && !item.tglSelesai) return false;
     if (statusFilter === "ongoing" && item.tglSelesai) return false;
     if (statusFilter === "issues" && !item.permasalahan.trim()) return false;
     if (chartSeries === "average" && getResolutionDays(item) === null) return false;
     return true;
-  }), [chartSeries, endDate, startDate, statusFilter, worklogs]);
+  }), [chartSeries, endDate, startDate, statusFilter, worklogs, yearFilter]);
   const priorityFiltered = useMemo(
     () => filteredByOtherFilters.filter((item) =>
       (monthFilter === "all" || getMonthKey(item.tglMulai) === monthFilter) &&
@@ -221,6 +232,87 @@ export default function Dashboard() {
     });
   }, [activityFiltered]);
 
+  const dailyActivity = useMemo(() => {
+    if (monthFilter === "all") return [];
+    const [year, month] = monthFilter.split("-").map(Number);
+    const monthItems = activityFiltered.filter((item) => getMonthKey(item.tglMulai) === monthFilter);
+    const byDay = new Map();
+    monthItems.forEach((item) => {
+      const day = item.tglMulai.slice(-2);
+      const current = byDay.get(day) || { total: 0, completed: 0, pending: 0, issues: 0 };
+      current.total += 1;
+      if (item.tglSelesai) current.completed += 1;
+      else current.pending += 1;
+      if (item.permasalahan.trim()) current.issues += 1;
+      byDay.set(day, current);
+    });
+    return Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => {
+      const day = String(index + 1).padStart(2, "0");
+      return {
+        day: index + 1,
+        dateKey: `${monthFilter}-${day}`,
+        ...(byDay.get(day) || { total: 0, completed: 0, pending: 0, issues: 0 }),
+      };
+    });
+  }, [activityFiltered, monthFilter]);
+
+  const calendarData = useMemo(() => {
+    const summarize = (items) => {
+      const summary = { total: items.length, completed: 0, pending: 0, issues: 0 };
+      items.forEach((item) => {
+        if (item.tglSelesai) summary.completed += 1;
+        else summary.pending += 1;
+        if (item.permasalahan.trim()) summary.issues += 1;
+      });
+      return summary;
+    };
+
+    const months = new Map();
+    activityFiltered.forEach((item) => {
+      const date = asDate(item.tglMulai);
+      if (!date) return;
+      const monthKey = getMonthKey(item.tglMulai);
+      const existing = months.get(monthKey) || { monthKey, items: [] };
+      existing.items.push(item);
+      months.set(monthKey, existing);
+    });
+    const monthlyCards = [...months.values()]
+      .map((item) => ({ ...item, ...summarize(item.items) }))
+      .sort((left, right) => right.monthKey.localeCompare(left.monthKey));
+
+    if (monthFilter === "all") {
+      return { mode: "months", months: monthlyCards };
+    }
+
+    const [year, month] = monthFilter.split("-").map(Number);
+    const monthItems = activityFiltered.filter((item) => getMonthKey(item.tglMulai) === monthFilter);
+    const byDay = new Map();
+    monthItems.forEach((item) => {
+      const day = item.tglMulai.slice(-2);
+      const existing = byDay.get(day) || { total: 0, completed: 0, pending: 0, issues: 0 };
+      existing.total += 1;
+      if (item.tglSelesai) existing.completed += 1;
+      else existing.pending += 1;
+      if (item.permasalahan.trim()) existing.issues += 1;
+      byDay.set(day, existing);
+    });
+    const firstDay = new Date(year, month - 1, 1);
+    const dayCount = new Date(year, month, 0).getDate();
+    return {
+      mode: "month",
+      months: monthlyCards,
+      year,
+      month,
+      label: formatMonth(monthFilter),
+      summary: summarize(monthItems),
+      leadingDays: (firstDay.getDay() + 6) % 7,
+      days: Array.from({ length: dayCount }, (_, index) => {
+        const day = String(index + 1).padStart(2, "0");
+        return { day: index + 1, dateKey: `${monthFilter}-${day}`, ...(byDay.get(day) || { total: 0, completed: 0, pending: 0, issues: 0 }) };
+      }),
+    };
+  }, [activityFiltered, monthFilter]);
+
   const applicationIssues = useMemo(() => {
     const counts = new Map();
     priorityFiltered.forEach((item) => {
@@ -294,7 +386,7 @@ export default function Dashboard() {
   useEffect(() => {
     setBlockerPage(1);
     setApplicationIssuePage(1);
-  }, [application, endDate, menu, monthFilter, startDate, statusFilter]);
+  }, [application, endDate, menu, monthFilter, startDate, statusFilter, yearFilter]);
 
   useEffect(() => {
     setBlockerPage((current) => Math.min(current, Math.max(1, blockerPageCount)));
@@ -322,6 +414,17 @@ export default function Dashboard() {
     setMonthFilter("all");
   }
 
+  function toggleDateFilter(dateKey) {
+    if (startDate === dateKey && endDate === dateKey) {
+      setStartDate("");
+      setEndDate("");
+    } else {
+      setStartDate(dateKey);
+      setEndDate(dateKey);
+    }
+    setTablePage(1);
+  }
+
   function toggleChartSeries(series) {
     const isActive = chartSeries === series || (chartSeries === "all" && series === "total");
     if (isActive) {
@@ -340,10 +443,12 @@ export default function Dashboard() {
     }
     setChartSeries(series);
     setStatusFilter(status);
+    setYearFilter(monthKey.slice(0, 4));
     setMonthFilter(monthKey);
   }
 
   function resetFilters() {
+    setYearFilter("all");
     setMonthFilter("all");
     setStartDate("");
     setEndDate("");
@@ -407,10 +512,23 @@ export default function Dashboard() {
         </div>
         <div className="filter-controls">
           <label className="dashboard-filter">
+            <span>Tahun laporan</span>
+            <select
+              value={yearFilter}
+              onChange={(event) => {
+                setYearFilter(event.target.value);
+                setMonthFilter("all");
+              }}
+            >
+              <option value="all">Semua tahun</option>
+              {availableYears.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="dashboard-filter">
             <span>Bulan laporan</span>
             <select value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)}>
               <option value="all">Semua bulan</option>
-              {availableMonths.map((item) => <option key={item} value={item}>{formatMonth(item)}</option>)}
+              {filteredMonths.map((item) => <option key={item} value={item}>{formatMonth(item)}</option>)}
             </select>
           </label>
           <label className="dashboard-filter">
@@ -458,7 +576,7 @@ export default function Dashboard() {
           <div className="dashboard-results-label">
             <span>{filtered.length} laporan ditampilkan</span>
             <span>
-              {monthFilter !== "all" ? formatMonth(monthFilter) : "Semua bulan"}
+              {monthFilter !== "all" ? formatMonth(monthFilter) : yearFilter !== "all" ? `Semua bulan ${yearFilter}` : "Semua tahun"}
               {startDate || endDate
                 ? ` · ${startDate ? formatDate(startDate) : "Awal"} – ${endDate ? formatDate(endDate) : "Sekarang"}`
                 : ""}
@@ -491,11 +609,11 @@ export default function Dashboard() {
               <span className="kpi-mark" aria-hidden="true">04</span>
             </article>
           </section>
-          <section className="dashboard-panel activity-panel" aria-label="Tren aktivitas bulanan">
+          <section className="dashboard-panel activity-panel" aria-label={monthFilter === "all" ? "Tren aktivitas bulanan" : `Tren aktivitas harian ${formatMonth(monthFilter)}`}>
             <div className="dashboard-panel-heading">
               <div>
                 <span className="panel-eyebrow">Tren laporan</span>
-                <h2>Ringkasan aktivitas bulanan</h2>
+                <h2>{monthFilter === "all" ? "Ringkasan aktivitas bulanan" : `Aktivitas harian ${formatMonth(monthFilter)}`}</h2>
               </div>
               <span className="panel-badge">Hover untuk detail · klik legenda untuk fokus</span>
             </div>
@@ -518,7 +636,35 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-            {monthlyActivity.length ? (
+            {monthFilter !== "all" ? (
+              dailyActivity.some((item) => item.total) ? (
+                <div className="activity-daily-chart" aria-label={`Grafik aktivitas harian ${formatMonth(monthFilter)}`}>
+                  {dailyActivity.map((item) => {
+                    const isSelected = startDate === item.dateKey && endDate === item.dateKey;
+                    const maxDailyActivity = Math.max(1, ...dailyActivity.map((entry) => entry.total));
+                    return (
+                      <button
+                        type="button"
+                        key={item.dateKey}
+                        className={`activity-daily-column${isSelected ? " is-selected" : ""}${item.total ? " has-data" : ""}`}
+                        onClick={() => toggleDateFilter(item.dateKey)}
+                        disabled={!item.total}
+                        title={`${formatDate(item.dateKey)}: ${item.total} laporan, ${item.completed} selesai, ${item.pending} tertunda`}
+                        aria-label={`${formatDate(item.dateKey)}: ${item.total} laporan, ${item.completed} selesai, ${item.pending} tertunda`}
+                      >
+                        <span className="activity-daily-value">{item.total || ""}</span>
+                        <span className="activity-daily-track">
+                          <i className="is-completed" style={{ height: `${(item.completed / maxDailyActivity) * 100}%` }} />
+                          <i className="is-pending" style={{ height: `${(item.pending / maxDailyActivity) * 100}%` }} />
+                        </span>
+                        <strong>{item.day}</strong>
+                        {item.issues > 0 && <small>{item.issues} kendala</small>}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : <div className="chart-empty">Belum ada aktivitas pada bulan ini.</div>
+            ) : monthlyActivity.length ? (
               <div className="activity-chart-shell">
                 <div className="activity-svg-wrap">
                   <svg className="activity-chart activity-chart-svg" viewBox="0 0 960 330" role="img" aria-label="Tren total laporan per bulan">
@@ -596,7 +742,11 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : <div className="chart-empty">Belum ada aktivitas pada periode ini.</div>}
-            <p className="chart-footnote">Klik batang atau bulan untuk memfilter laporan. Grafik menampilkan 12 bulan terakhir sesuai filter aplikasi, menu, status, dan rentang tanggal.</p>
+            <p className="chart-footnote">
+              {monthFilter === "all"
+                ? "Klik batang atau bulan untuk memfilter laporan. Grafik menampilkan 12 bulan terakhir sesuai filter aplikasi, menu, status, dan rentang tanggal."
+                : "Klik batang untuk memfilter satu tanggal. Klik kembali batang yang sama untuk membatalkan filter tanggal."}
+            </p>
           </section>
 
           <section className="dashboard-chart-grid">
@@ -663,9 +813,10 @@ export default function Dashboard() {
                     <li key={`${normalizeText(item.text)}-${index}`}>
                       <button
                         type="button"
-                        className="blocker-select"
+                        className={`blocker-select${normalizeText(tableSearch) === normalizeText(item.text) ? " is-selected" : ""}`}
                         onClick={() => {
-                          setTableSearch(item.text);
+                          setTableSearch((current) => normalizeText(current) === normalizeText(item.text) ? "" : item.text);
+                          setTablePage(1);
                           document.getElementById("dashboard-reports")?.scrollIntoView({ behavior: "smooth" });
                         }}
                         title="Tampilkan laporan dengan kendala ini"
@@ -691,6 +842,95 @@ export default function Dashboard() {
                 </div>
               )}
             </article>
+          </section>
+
+          <section className="dashboard-panel calendar-panel" aria-labelledby="calendar-heading">
+            <div className="dashboard-panel-heading">
+              <div>
+                <span className="panel-eyebrow">Kalender laporan</span>
+                <h2 id="calendar-heading">
+                  {calendarData.mode === "month" ? calendarData.label : "Ringkasan per bulan"}
+                </h2>
+              </div>
+              <span className="panel-badge">
+                {calendarData.mode === "month"
+                  ? `${calendarData.summary.total} laporan pada bulan ini`
+                  : `${calendarData.months.length} bulan tersedia`}
+              </span>
+              {calendarData.mode === "month" && (
+                <button type="button" className="text-button calendar-back-button" onClick={() => setMonthFilter("all")}>
+                  Kembali ke ringkasan bulanan
+                </button>
+              )}
+            </div>
+
+            {calendarData.mode === "months" ? (calendarData.months.length ? (
+                <div className="dashboard-calendar-month-grid">
+                  {calendarData.months.map((item) => (
+                    <button
+                      type="button"
+                      className={`dashboard-calendar-month-card${monthFilter === item.monthKey ? " is-selected" : ""}`}
+                      key={item.monthKey}
+                      aria-pressed={monthFilter === item.monthKey}
+                      onClick={() => {
+                        if (monthFilter === item.monthKey) {
+                          setMonthFilter("all");
+                          return;
+                        }
+                        setYearFilter(item.monthKey.slice(0, 4));
+                        setMonthFilter(item.monthKey);
+                      }}
+                      title={monthFilter === item.monthKey ? "Klik untuk menampilkan semua bulan" : `Filter ${formatMonth(item.monthKey)}`}
+                    >
+                      <strong>{formatMonth(item.monthKey)}</strong>
+                      <span>{item.total} laporan</span>
+                      <small>{item.completed} selesai Â· {item.pending} tertunda Â· {item.issues} berkendala</small>
+                    </button>
+                  ))}
+                </div>
+              ) : <div className="chart-empty">Belum ada data tanggal untuk ditampilkan.</div>)
+            : (
+              <>
+                <div className="dashboard-calendar-summary" aria-label={`Ringkasan ${calendarData.label}`}>
+                  <span><strong>{calendarData.summary.total}</strong> total</span>
+                  <span className="is-completed"><strong>{calendarData.summary.completed}</strong> selesai</span>
+                  <span className="is-pending"><strong>{calendarData.summary.pending}</strong> tertunda</span>
+                  <span className="is-issue"><strong>{calendarData.summary.issues}</strong> berkendala</span>
+                </div>
+                <div className="dashboard-calendar-weekdays" aria-hidden="true">
+                  {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((day) => <span key={day}>{day}</span>)}
+                </div>
+                <div className="dashboard-calendar-grid" aria-label={`Kalender laporan ${calendarData.label}`}>
+                  {Array.from({ length: calendarData.leadingDays }, (_, index) => (
+                    <span className="dashboard-calendar-day is-empty" key={`empty-${index}`} aria-hidden="true" />
+                  ))}
+                  {calendarData.days.map((day) => (
+                    <button
+                      type="button"
+                      className={`dashboard-calendar-day${day.total ? " has-data" : ""}${startDate === day.dateKey && endDate === day.dateKey ? " is-selected" : ""}`}
+                      key={day.dateKey}
+                      disabled={!day.total}
+                      onClick={() => {
+                        toggleDateFilter(day.dateKey);
+                        document.getElementById("dashboard-reports")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      title={day.total ? `${day.total} laporan pada ${formatDate(day.dateKey)}` : `Tidak ada laporan pada ${formatDate(day.dateKey)}`}
+                      aria-label={`${formatDate(day.dateKey)}: ${day.total} laporan, ${day.completed} selesai, ${day.pending} tertunda`}
+                    >
+                      <strong>{day.day}</strong>
+                      {day.total ? (
+                        <>
+                          <span>{day.total} laporan</span>
+                          <small>{day.completed} selesai Â· {day.pending} tertunda</small>
+                          {day.issues > 0 && <em>{day.issues} kendala</em>}
+                      </>
+                      ) : <small className="dashboard-calendar-no-data">—</small>}
+                    </button>
+                  ))}
+                </div>
+                <p className="chart-footnote">Klik tanggal yang memiliki data untuk memfilter tabel laporan ke hari tersebut.</p>
+              </>
+            )}
           </section>
 
           <section className="dashboard-panel recent-panel" id="dashboard-reports">
