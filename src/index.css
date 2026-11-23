@@ -7986,7 +7986,7 @@ button[aria-busy="true"]::before {
   display: grid;
   min-height: 220px;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
   border: 0;
   border-radius: 6px;
   background: #eef2ee;
